@@ -1,0 +1,101 @@
+import { getPgClient } from '../utils/initializers/postgres';
+
+export async function runPgStatement({ db = getPgClient(), query, values = [] }) {
+  const result = await db.query(query, values);
+  return result.rows;
+}
+
+export default class PostgresDao {
+  constructor(tableName) {
+    this.tableName = tableName;
+  }
+
+  async getAllRows({
+    db = getPgClient(),
+    where,
+    orderBy,
+    limit,
+    offset,
+    tableName = this.tableName,
+  } = {}) {
+    let query = `SELECT * FROM ${tableName}`;
+    const values = [];
+
+    if (where) query += ' WHERE ' + where;
+    if (orderBy) query += ' ORDER BY ' + orderBy;
+    if (limit) {
+      query += ' LIMIT $' + (values.length + 1);
+      values.push(limit);
+    }
+
+    if (offset !== undefined) {
+      query += ' OFFSET $' + (values.length + 1);
+      values.push(offset);
+    }
+
+    const result = await db.query(query, values);
+    return result.rows;
+  }
+
+  async insertOrUpdateMultipleObjs({
+    db = getPgPool(),
+    columnNames,
+    multiRowsColValuesList,
+    updateColumnNames,
+    conflictColumns,
+    tableName = this.tableName,
+    returningCol = 'id',
+  }) {
+    const valueStrings = [];
+    const flatValues = [];
+    let paramIndex = 1;
+
+    multiRowsColValuesList.forEach((row, index) => {
+      if (!Array.isArray(row)) {
+        throw new Error(`Row at index ${index} is not an array: ${JSON.stringify(row)}`);
+      }
+
+      const rowPlaceholders = row.map(() => `$${paramIndex++}`);
+      valueStrings.push(`(${rowPlaceholders.join(', ')})`);
+      flatValues.push(...row);
+    });
+
+    let sql = `INSERT INTO ${tableName} (${columnNames.join(', ')}) VALUES ${valueStrings.join(
+      ', '
+    )}`;
+    sql += ` ON CONFLICT (${conflictColumns.join(', ')}) DO UPDATE SET `;
+
+    // Build update clause
+    const updateClauses = updateColumnNames.map((col) => `${col} = EXCLUDED.${col}`);
+
+    // Automatically add updated_at = CURRENT_TIMESTAMP if not already in updateColumnNames
+    if (!updateColumnNames.includes('updated_at')) {
+      updateClauses.push('updated_at = CURRENT_TIMESTAMP');
+    }
+
+    sql += updateClauses.join(', ');
+    sql += ` RETURNING ${returningCol}`;
+
+    try {
+      return await db.query(sql, flatValues);
+    } catch (error) {
+      // If error is about updated_at column not existing, retry without it
+      if (error.message.includes('updated_at') && error.code === '42703') {
+        const updateClausesWithoutTimestamp = updateColumnNames.map(
+          (col) => `${col} = EXCLUDED.${col}`
+        );
+        let retrySQL = `INSERT INTO ${tableName} (${columnNames.join(
+          ', '
+        )}) VALUES ${valueStrings.join(', ')}`;
+        retrySQL += ` ON CONFLICT (${conflictColumns.join(', ')}) DO UPDATE SET `;
+        retrySQL += updateClausesWithoutTimestamp.join(', ');
+        retrySQL += ` RETURNING ${returningCol}`;
+
+        return await db.query(retrySQL, flatValues);
+      }
+      throw error;
+    }
+  }
+}
+
+export const defaultPgDao = new PostgresDao('default');
