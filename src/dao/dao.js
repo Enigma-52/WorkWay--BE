@@ -1,4 +1,4 @@
-import { getPgClient } from '../utils/initializers/postgres';
+import { getPgPool } from '../utils/initializers/postgres.js';
 
 export async function runPgStatement({ db = getPgClient(), query, values = [] }) {
   const result = await db.query(query, values);
@@ -10,8 +10,36 @@ export default class PostgresDao {
     this.tableName = tableName;
   }
 
+  async getRow({ db = getPgPool(), where, orderBy, offset, tableName = this.tableName } = {}) {
+    let query = `SELECT * FROM ${tableName}`;
+    const values = [];
+
+    if (where && typeof where === 'object' && !Array.isArray(where)) {
+      const conditions = Object.entries(where).map(([key, value], index) => {
+        values.push(value);
+        return `${key} = $${index + 1}`;
+      });
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    if (orderBy) {
+      query += ' ORDER BY ' + orderBy;
+    }
+
+    if (offset) {
+      query += ` OFFSET ` + offset;
+    }
+
+    // LIMIT should always be added last
+    query += ` LIMIT $${values.length + 1}`;
+    values.push(1);
+
+    const result = await db.query(query, values);
+    return result.rows[0] || null;
+  }
+
   async getAllRows({
-    db = getPgClient(),
+    db = getPgPool(),
     where,
     orderBy,
     limit,

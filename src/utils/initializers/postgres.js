@@ -37,11 +37,11 @@ export async function initPg() {
  * Get a PostgreSQL client
  * Caller MUST release()
  */
-export async function getPgClient() {
+export function getPgPool() {
   if (!pool) {
     throw new Error('Postgres not initialized. Call initPg() first.');
   }
-  return pool.connect();
+  return pool;
 }
 
 /**
