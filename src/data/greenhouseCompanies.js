@@ -1,1 +1,1 @@
-export const greenhouseCompanies = ['JaneStreet'];
+export const greenhouseCompanies = ['Intrinsic', 'ServiceTrade'];

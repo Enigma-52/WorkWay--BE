@@ -10,6 +10,15 @@ export default class PostgresDao {
     this.tableName = tableName;
   }
 
+  async getQ({ db = getPgPool(), sql, values = [], firstResultOnly = false }) {
+    const result = await db.query(sql, values);
+    return !firstResultOnly ? result.rows : result.rows.length > 0 ? result.rows[0] : null;
+  }
+
+  async updateQ({ db = getPgPool(), sql, values = [] }) {
+    return await db.query(sql, values);
+  }
+
   async getRow({ db = getPgPool(), where, orderBy, offset, tableName = this.tableName } = {}) {
     let query = `SELECT * FROM ${tableName}`;
     const values = [];
