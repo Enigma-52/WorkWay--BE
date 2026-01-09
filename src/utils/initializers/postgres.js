@@ -11,18 +11,18 @@ export async function initPg() {
   if (pool) return pool;
 
   pool = new Pool({
-    user: POSTGRES_DB.USER || 'postgres',
-    host: POSTGRES_DB.HOST || 'localhost',
-    database: POSTGRES_DB.DATABASE || 'eqhqdb',
+    user: POSTGRES_DB.USER,
+    host: POSTGRES_DB.HOST,
+    database: POSTGRES_DB.DATABASE,
     password: POSTGRES_DB.PASSWORD,
-    port: POSTGRES_DB.PORT || 5432,
+    port: POSTGRES_DB.PORT,
     max: Number(POSTGRES_DB.POSTGRES_DB_MAX_CONNECTIONS) || 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-    ssl: { rejectUnauthorized: false }, // ALWAYS ON for Supabase
+    idleTimeoutMillis: 60000,
+    // REMOVE or increase this
+    connectionTimeoutMillis: 15000,
+    ssl: { rejectUnauthorized: false },
   });
 
-  // Fail fast on startup
   const client = await pool.connect();
   try {
     await client.query('SELECT 1');
