@@ -10,6 +10,11 @@ export const jobsQ = {
     ORDER BY id DESC
     LIMIT $2;
   `,
+  COMPANY_FEED: `
+    SELECT ${JOB_FEED_COLS}
+    FROM jobs
+    WHERE company_id = $1;
+  `,
 };
 
 class JobsDao extends PostgresDao {
@@ -24,6 +29,12 @@ class JobsDao extends PostgresDao {
     return this.getQ({
       sql: jobsQ.HOME_FEED,
       values: [lastJobId, limit],
+    });
+  }
+  async getCompanyJobFeed({ companyId }) {
+    return this.getQ({
+      sql: jobsQ.COMPANY_FEED,
+      values: [companyId],
     });
   }
 }
