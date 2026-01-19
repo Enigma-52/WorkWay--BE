@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import express from 'express';
 import { logger } from './utils/logger.js';
 import { initPg } from './utils/initializers/postgres.js';
