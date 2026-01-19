@@ -1,5 +1,6 @@
 import { defaultPgDao } from '../dao/dao.js';
 import { jobsDao } from '../dao/jobsDao.js';
+import { companyDao } from '../dao/companyDao.js';
 
 export async function getCompanyDetails(slug) {
   try {
@@ -8,7 +9,6 @@ export async function getCompanyDetails(slug) {
       where: { slug },
     });
     const companyId = companyDetails ? companyDetails.id : null;
-    console.log(companyId);
     const jobDetails = await jobsDao.getCompanyJobFeed({ companyId });
     const enrichedCompanyDetails = {
       ...companyDetails,
@@ -19,4 +19,14 @@ export async function getCompanyDetails(slug) {
     console.error(`Failed to fetch details for company with slug ${slug}:`, error);
     throw error;
   }
+}
+
+export async function getAllCompanies(params) {
+  const { q, page, limit, letter, hiring } = params;
+  const companies = await companyDao.getAllCompanies({ q, page, limit, letter, hiring });
+  return companies;
+}
+
+export async function getCompanyOverview() {
+  return companyDao.getOverview();
 }

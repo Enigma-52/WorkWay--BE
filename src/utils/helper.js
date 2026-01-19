@@ -226,3 +226,63 @@ export async function parseGreenhouseJobDescription(rawHtml) {
 
   return sections;
 }
+
+export async function pickRelevantDescriptionSections(description) {
+  if (!Array.isArray(description) || description.length === 0) return null;
+
+  const KEYWORDS_PRIORITY = [
+    'about you',
+    'requirements',
+    'qualifications',
+    'what we’re looking for',
+    'what you’ll need',
+    'who you are',
+    'candidate',
+    'skills',
+    'experience',
+    'profile',
+    'what we expect',
+    'what we want',
+    'responsibilities',
+    'about the role',
+    'about the position',
+    'role',
+    'position',
+  ];
+
+  // Normalize headings
+  const normalized = description.map((section) => ({
+    ...section,
+    _heading: (section.heading || '').toLowerCase(),
+  }));
+
+  let picked = null;
+
+  // Try priority keywords
+  for (const kw of KEYWORDS_PRIORITY) {
+    const found = normalized.find((s) => s._heading.includes(kw));
+    if (found) {
+      picked = found;
+      break;
+    }
+  }
+
+  // Fallback: longest content
+  if (!picked) {
+    picked = normalized[0];
+    for (const s of normalized) {
+      if ((s.content?.length || 0) > (picked.content?.length || 0)) {
+        picked = s;
+      }
+    }
+  }
+
+  if (!picked || !Array.isArray(picked.content) || picked.content.length === 0) {
+    return null;
+  }
+
+  // ✅ Take first 3 lines and merge into one string
+  const preview = picked.content.slice(0, 3).join(' ').replace(/\s+/g, ' ').trim();
+
+  return preview || null;
+}

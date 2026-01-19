@@ -31,10 +31,14 @@ export async function fetchGreenhouseJobs() {
     where: "platform = 'greenhouse'",
   });
 
-  for (const company of companies) {
+  console.log(`Fetched ${companies.length} greenhouse companies from DB`);
+
+  const companyPromises = companies.map(async (company) => {
     try {
+      console.log(`Fetching jobs for company: ${company.name}`);
       const jobs = await getJobs(company.namespace);
-      for (const job of jobs) {
+      console.log(`Found ${jobs.length} jobs for ${company.name}`);
+      const jobPromises = jobs.map(async (job) => {
         try {
           const desc = await getJobDescription(company.namespace, job.id);
           const sections = await parseGreenhouseJobDescription(desc.content);
@@ -45,6 +49,12 @@ export async function fetchGreenhouseJobs() {
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-+|-+$/g, '');
 
+          const [experience_level, employment_type, domain] = await Promise.all([
+            getExperienceLevel(job.title),
+            getEmploymentType(job.title),
+            getJobDomain(job.title),
+          ]);
+
           const dbRow = {
             company: company.name,
             company_id: company.id,
@@ -54,99 +64,150 @@ export async function fetchGreenhouseJobs() {
             title: job.title,
             url: job.absolute_url,
             description: JSON.stringify(sections),
-            experience_level: await getExperienceLevel(job.title),
-            employment_type: await getEmploymentType(job.title),
-            domain: await getJobDomain(job.title),
+            experience_level,
+            employment_type,
+            domain,
             location: job.location ? job.location.name : 'Worldwide',
             updated_at: new Date().toISOString(),
           };
-          result.push(dbRow);
+          console.log(`Processed job: ${job.title} (${job.id})`);
+          return dbRow;
         } catch (error) {
           console.error(`Failed to fetch job ${job.id} for company ${company.name}:`, error);
+          return null;
         }
-      }
+      });
+      return await Promise.all(jobPromises);
     } catch (error) {
       console.error(`Failed to fetch jobs for company ${company.name}:`, error);
+      return [];
     }
-  }
+  });
+
+  const allJobs = await Promise.all(companyPromises);
+  const flattenedJobs = allJobs.flat().filter((job) => job !== null);
+  console.log(`Total jobs fetched: ${flattenedJobs.length}`);
+  result.push(...flattenedJobs);
   await insertGreenhouseJobsToDb(result);
   return { message: 'Fetched and stored greenhouse jobs successfully', count: result.length };
 }
 
 export async function insertGreenhouseJobsToDb(jobs) {
-  const multiRowsColValuesList = jobs.map((job) => [
-    job.company,
-    job.company_id,
-    job.slug,
-    job.platform,
-    job.job_id,
-    job.title,
-    job.url,
-    job.description,
-    job.experience_level,
-    job.employment_type,
-    job.domain,
-    job.location,
-    job.updated_at,
-  ]);
+  if (!jobs || jobs.length === 0) {
+    console.log('No jobs to insert');
+    return;
+  }
 
-  await defaultPgDao.insertOrUpdateMultipleObjs({
-    tableName: 'jobs',
-    columnNames: [
-      'company',
-      'company_id',
-      'slug',
-      'platform',
-      'job_id',
-      'title',
-      'url',
-      'description',
-      'experience_level',
-      'employment_type',
-      'domain',
-      'location',
-      'updated_at',
-    ],
-    multiRowsColValuesList,
-    updateColumnNames: [
-      'title',
-      'url',
-      'description',
-      'experience_level',
-      'employment_type',
-      'domain',
-      'location',
-      'updated_at',
-    ],
-    conflictColumns: ['slug'],
-    returningCol: 'id',
-  });
+  const BATCH_SIZE = 50;
+  const batches = [];
+
+  for (let i = 0; i < jobs.length; i += BATCH_SIZE) {
+    batches.push(jobs.slice(i, i + BATCH_SIZE));
+  }
+
+  console.log(`Inserting ${jobs.length} jobs in ${batches.length} batches`);
+
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    const multiRowsColValuesList = batch.map((job) => [
+      job.company,
+      job.company_id,
+      job.slug,
+      job.platform,
+      job.job_id,
+      job.title,
+      job.url,
+      job.description,
+      job.experience_level,
+      job.employment_type,
+      job.domain,
+      job.location,
+      job.updated_at,
+    ]);
+
+    await defaultPgDao.insertOrUpdateMultipleObjs({
+      tableName: 'jobs',
+      columnNames: [
+        'company',
+        'company_id',
+        'slug',
+        'platform',
+        'job_id',
+        'title',
+        'url',
+        'description',
+        'experience_level',
+        'employment_type',
+        'domain',
+        'location',
+        'updated_at',
+      ],
+      multiRowsColValuesList,
+      updateColumnNames: [
+        'title',
+        'url',
+        'description',
+        'experience_level',
+        'employment_type',
+        'domain',
+        'location',
+        'updated_at',
+      ],
+      conflictColumns: ['slug'],
+      returningCol: 'id',
+    });
+
+    console.log(`Inserted batch ${i + 1}/${batches.length}`);
+  }
 }
 
 export async function insertGreenhouseCompanies() {
-  const companies = [];
-  for (const company of greenhouseCompanies) {
-    const response = await fetch(`${baseGreenhouseUrl}${company.toLowerCase()}`);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const result = await response.json();
-    const companyName = result.name;
-    const companyDescription = result.description || 'No description available';
+  const uniqueCompanies = [...new Set(greenhouseCompanies)];
+  const companyPromises = uniqueCompanies.map(async (company) => {
+    try {
+      const response = await fetch(`${baseGreenhouseUrl}${company.toLowerCase()}`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+      const companyName = result.name;
+      const companyDescription = result.description || 'No description available';
 
-    const dbRow = {
-      name: companyName,
-      description: companyDescription,
-      slug: companyName.toLowerCase().replace(/\s+/g, '-'),
-      logo_url: `https://img.logo.dev/${company.toLowerCase()}.com?token=pk_VwiQaQgWRqm2uv-prQBDXw`,
-      location: JSON.stringify({}),
-      website: null,
-      platform: 'greenhouse',
-      namespace: company.toLowerCase(),
-    };
-    companies.push(dbRow);
+      const dbRow = {
+        name: companyName,
+        description: companyDescription,
+        slug: companyName.toLowerCase().replace(/\s+/g, '-'),
+        logo_url: `https://img.logo.dev/${company.toLowerCase()}.com?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
+        location: JSON.stringify({}),
+        website: null,
+        platform: 'greenhouse',
+        namespace: company.toLowerCase(),
+      };
+      console.log(`Prepared company for insertion: ${companyName}`);
+      return dbRow;
+    } catch (error) {
+      console.error(`Failed to fetch company ${company}:`, error);
+      return null;
+    }
+  });
+
+  const results = await Promise.all(companyPromises);
+  const companies = results.filter((c) => c !== null);
+
+  // DEDUPE BY SLUG (THIS IS THE IMPORTANT PART)
+  const bySlug = new Map();
+
+  for (const c of companies) {
+    if (!bySlug.has(c.slug)) {
+      bySlug.set(c.slug, c);
+    } else {
+      console.log('Duplicate slug detected, dropping:', c.slug);
+    }
   }
 
-  await insertGreenhouseCompaniesToDb(companies);
-  return { message: 'Inserted greenhouse companies successfully' };
+  const dedupedCompanies = Array.from(bySlug.values());
+
+  await insertGreenhouseCompaniesToDb(dedupedCompanies);
+
+  return { message: 'Inserted greenhouse companies successfully', count: companies.length };
 }
 
 export async function insertGreenhouseCompaniesToDb(companies) {

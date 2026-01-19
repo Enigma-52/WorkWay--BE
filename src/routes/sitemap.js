@@ -1,51 +1,45 @@
 import express from 'express';
+import {
+  generateSitemapIndex,
+  generateStaticSitemap,
+  generateCompaniesSitemap,
+  generateDomainsSitemap,
+  generateJobsSitemap,
+} from '../services/sitemapService.js';
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-  const baseUrl = 'https://www.workway.dev';
-  const today = new Date().toISOString().split('T')[0];
+/* Sitemap index */
+router.get('/sitemap.xml', (req, res) => {
+  const xml = generateSitemapIndex();
+  res.setHeader('Content-Type', 'application/xml');
+  res.status(200).send(xml);
+});
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${baseUrl}/</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/company/jane-street</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/company/commerceiq</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/company/intrinsic</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/company/servicetrade</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/about</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-</urlset>`;
+/* Static pages */
+router.get('/sitemaps/static.xml', (req, res) => {
+  const xml = generateStaticSitemap();
+  res.setHeader('Content-Type', 'application/xml');
+  res.status(200).send(xml);
+});
 
+/* Companies */
+router.get('/sitemaps/companies.xml', async (req, res) => {
+  const xml = await generateCompaniesSitemap();
+  res.setHeader('Content-Type', 'application/xml');
+  res.status(200).send(xml);
+});
+
+/* Domains */
+router.get('/sitemaps/domains.xml', async (req, res) => {
+  const xml = await generateDomainsSitemap();
+  res.setHeader('Content-Type', 'application/xml');
+  res.status(200).send(xml);
+});
+
+/* Jobs */
+router.get('/sitemaps/jobs.xml', async (req, res) => {
+  const xml = await generateJobsSitemap();
   res.setHeader('Content-Type', 'application/xml');
   res.status(200).send(xml);
 });

@@ -1,44 +1,25 @@
 import { defaultPgDao } from '../dao/dao.js';
+import { jobsDao } from '../dao/jobsDao.js';
 
 export async function getJobDetails(slug) {
   try {
-    const jobDetails = await defaultPgDao.getRow({
-      tableName: 'jobs',
-      where: { slug },
+    const jobDetails = await jobsDao.getSingleJob({ slug });
+
+    const jobDomain = jobDetails[0].domain;
+    const domainJobs = await jobsDao.getDomainJobwithExclusion({
+      domain: jobDomain,
+      excludeSlug: slug,
     });
 
-    const jobDomain = jobDetails.domain;
-    const domainJobs = await defaultPgDao.getAllRows({
-      tableName: 'jobs',
-      where: `domain = '${jobDomain}' AND slug != '${slug}'`,
+    const companyJobs = await jobsDao.getCompanyJobwithExclusion({
+      company: jobDetails[0].company,
+      excludeSlug: slug,
     });
-
-    const companyJobs = await defaultPgDao.getAllRows({
-      tableName: 'jobs',
-      where: `company = '${jobDetails.company}' AND slug != '${slug}'`,
-    });
-
-    // Truncate to only include specific fields
-    const truncatedDomainJobs = domainJobs.map((job) => ({
-      company: job.company,
-      title: job.title,
-      slug: job.slug,
-      location: job.location,
-      employment_type: job.employment_type,
-    }));
-
-    const truncatedCompanyJobs = companyJobs.map((job) => ({
-      company: job.company,
-      title: job.title,
-      slug: job.slug,
-      location: job.location,
-      employment_type: job.employment_type,
-    }));
 
     const enrichedJobDetails = {
-      ...jobDetails,
-      similarJobsByDomain: truncatedDomainJobs,
-      otherJobsByCompany: truncatedCompanyJobs,
+      ...jobDetails[0],
+      similarJobsByDomain: domainJobs,
+      otherJobsByCompany: companyJobs,
     };
 
     return enrichedJobDetails;

@@ -4,6 +4,7 @@ import { fetchGreenhouseJobs, insertGreenhouseCompanies } from '../services/cron
 const router = express.Router();
 
 router.get('/insert_greenhouse', async (req, res) => {
+  console.log('Cron job /insert_greenhouse triggered');
   const result = await fetchGreenhouseJobs();
   res.json(result);
 });

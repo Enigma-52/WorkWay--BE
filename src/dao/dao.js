@@ -1,8 +1,18 @@
 import { getPgPool } from '../utils/initializers/postgres.js';
 
-export async function runPgStatement({ db = getPgClient(), query, values = [] }) {
+export async function runPgStatement({ db = getPgPool(), query, values = [] }) {
   const result = await db.query(query, values);
   return result.rows;
+}
+
+function debugSQL(sql, values) {
+  return sql.replace(/\$(\d+)/g, (_, n) => {
+    const v = values[Number(n) - 1];
+    if (v === null || v === undefined) return 'NULL';
+    if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`;
+    if (typeof v === 'boolean') return v ? 'true' : 'false';
+    return String(v);
+  });
 }
 
 export default class PostgresDao {
