@@ -12,21 +12,18 @@ export async function initPg() {
 
   pool = new Pool({
     user: POSTGRES_DB.USER,
-    host: POSTGRES_DB.HOST, // *.pooler.supabase.com
+    host: POSTGRES_DB.HOST, // db.xxxxx.supabase.co
     database: POSTGRES_DB.DATABASE,
     password: POSTGRES_DB.PASSWORD,
-    port: POSTGRES_DB.PORT, // usually 5432 or 6543
-    max: 5, // IMPORTANT: keep small for pooler
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 15000,
+    port: POSTGRES_DB.PORT, // 5432
+
     ssl: { rejectUnauthorized: false },
 
-    // CRITICAL for PgBouncer:
-    statement_timeout: 0,
-    query_timeout: 0,
-    keepAlive: true,
-    // Disable prepared statements:
-    prepareThreshold: 0,
+    max: 5,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+
+    family: 4, // 🔴 force IPv4 on Render
   });
 
   const client = await pool.connect();

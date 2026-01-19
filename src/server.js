@@ -29,7 +29,7 @@ app.get('/', (req, res) => {
 // Start server
 const server = app.listen(PORT, async () => {
   logger.info('Initializing PostgreSQL connection...');
-  await initPg();
+  await initPg().catch((err) => logger.error(err));
   logger.info('PostgreSQL initialized');
   logger.info('Server started', { port: PORT });
 });
