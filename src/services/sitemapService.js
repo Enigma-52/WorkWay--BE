@@ -83,9 +83,10 @@ export function generateStaticSitemap() {
 ========================= */
 
 export async function generateCompaniesSitemap() {
+  const d = today();
   const rows = await runPgStatement({
     query: `
-      SELECT slug, created_at AS updated_at
+      SELECT slug
       FROM companies
       WHERE slug IS NOT NULL
     `,
@@ -94,7 +95,7 @@ export async function generateCompaniesSitemap() {
   const items = rows.map((r) =>
     urlTag({
       loc: `/company/${r.slug}`,
-      lastmod: (r.updated_at || new Date()).toISOString().split('T')[0],
+      lastmod: d,
       changefreq: 'daily',
       priority: 0.8,
     })
