@@ -97,7 +97,7 @@ export async function generateCompaniesSitemap() {
       loc: `/company/${r.slug}`,
       lastmod: d,
       changefreq: 'daily',
-      priority: 0.8,
+      priority: 0.9,
     })
   );
 
@@ -139,8 +139,8 @@ export async function generateJobsSitemap() {
     urlTag({
       loc: `/job/${r.slug}`,
       lastmod: today(),
-      changefreq: 'weekly',
-      priority: 0.7,
+      changefreq: 'daily',
+      priority: 0.9,
     })
   );
 
