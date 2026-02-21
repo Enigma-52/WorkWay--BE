@@ -200,10 +200,7 @@ export const SKILLS = [
   { name: "VHDL", type: "hardware", patterns: ["vhdl"] },
 
   // —— Soft / General (short, JD-friendly) ——
-  { name: "Communication", type: "soft_skill", patterns: ["communication", "communicate"] },
   { name: "Problem solving", type: "soft_skill", patterns: ["problem solving", "problem-solving"] },
-  { name: "Collaboration", type: "soft_skill", patterns: ["collaboration", "team player", "teamwork"] },
-  { name: "Leadership", type: "soft_skill", patterns: ["leadership", "lead "] },
   { name: "Mentoring", type: "soft_skill", patterns: ["mentoring", "mentor"] },
   { name: "Documentation", type: "soft_skill", patterns: ["documentation", "document "] },
   { name: "Code review", type: "soft_skill", patterns: ["code review", "code reviews"] },

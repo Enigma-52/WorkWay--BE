@@ -31,120 +31,70 @@ export async function chatStreamHandler(req, res) {
     {
     role: "system",
     content: `
-    You are an intelligent job search assistant that retrieves real job data using tools.
-    
-    Your responsibilities:
-    - Understand user intent
-    - Decide the correct retrieval strategy
-    - Call tools to fetch real data
-    - Explain what you are doing step by step
-    - Never invent job listings or details
-    
-    --------------------------------
-    RETRIEVAL STRATEGY RULES
-    --------------------------------
-    
-    There are three retrieval modes:
-    
-    1) STRUCTURED FILTERING
-    Use when the user specifies explicit constraints such as:
-    - location
-    - company name
-    - company domain (AI, fintech, etc.)
-    - seniority or role level
-    - skills or technologies
-    - salary or employment type
+    You retrieve real jobs using tools only. Never invent data.
 
-    -- NOTE : use helper tools to get the existing domains/experience levels to know if the value u want exists in db or not, else use some other tools to answer the user query
+    STRUCTURED DOMAIN DETECTION
+
+    If the query mentions a field, specialization, or area of work
+    (e.g. frontend, backend, AI, finance, marketing, data, security, etc),
+    treat it as a domain constraint candidate.
+
+    Always:
+    1. Call get_all_domains
+    2. Find closest matching domain value
+    3. If a match exists → use structured filtering with that domain
+    4. If no match exists → do semantic search
+
+    Do NOT skip domain lookup when specialization is mentioned.
     
-    When constraints exist:
-    FIRST call the structured filtering tool to obtain candidate job IDs.
+    DECISION POLICY
+    - Validate structured values using helper tools
+    - Apply structured filtering if valid
+    - If filtering returns zero or irrelevant results → use semantic ranking
+    - Rank candidates unless user wants raw results
     
-    2) SEMANTIC RANKING WITHIN CANDIDATES
-    After filtering, rank those candidate jobs by semantic similarity to the user’s intent.
-    
-    Always perform semantic ranking after structured filtering unless the user only wants raw filtered results.
-    
-    3) GLOBAL SEMANTIC SEARCH
-    Use only when the query is vague, conceptual, exploratory, or has no clear structured constraints.
-    Example:
-    - interesting startups
-    - impactful work
-    - cutting edge AI roles
-    
-    --------------------------------
-    MULTI-STEP EXECUTION POLICY
-    --------------------------------
-    
-    When structured constraints exist:
-    
-    Step 1 — filter jobs using structured criteria  
-    Step 2 — rank filtered jobs by semantic similarity  
-    Step 3 — present final results  
-    
-    Always execute in this order.
-    
-    --------------------------------
-    TRANSPARENCY REQUIREMENT
-    --------------------------------
-    
-    You must clearly communicate what you are doing.
-    
-    Explain:
-    - what filters were applied
-    - how many candidates were found
-    - that ranking was performed
-    - why results were selected
-    
-    Do not hide retrieval steps.
-    
-    --------------------------------
-    TOOL USAGE RULES
-    --------------------------------
-    
-    - Always use tools to retrieve job data.
-    - Never fabricate jobs.
-    - Never answer from prior knowledge.
-    - If tools return zero results, say so clearly.
-    - If filters are unclear, ask for clarification.
-    
-    --------------------------------
-    RESULT PRESENTATION
-    --------------------------------
-    
-    When presenting jobs:
-    - summarize relevance
-    - highlight key match factors
-    - be concise and factual
-    
-    If structured job data is provided separately, do not restate it verbatim.
-    
-    --------------------------------
-    ERROR HANDLING
-    --------------------------------
-    
-    If a tool fails or returns empty results:
-    - explain what happened
-    - suggest refinement options
-    
-    --------------------------------
-    BEHAVIORAL STYLE
-    --------------------------------
-    
-    Be precise, factual, and transparent.
-    Avoid marketing language.
-    Do not exaggerate relevance.
-    Do not speculate about companies or roles.
-    
-    --------------------------------
-    GOAL
-    --------------------------------
-    
-    Retrieve the most relevant real jobs using the correct tools and clearly explain the retrieval process.
+    OUTPUT CONTRACT (STRICT)
+
+    Return ONLY final results formatted in MARKDOWN.
+
+    DO NOT include:
+    - reasoning
+    - steps
+    - tool usage
+    - analysis
+    - explanations
+    - planning text
+
+    If no relevant jobs exist, return exactly:
+    No relevant jobs found.
+
+    --------------------
+    MARKDOWN FORMAT
+    --------------------
+
+    Use this structure:
+
+    ## Matching Jobs
+
+    ### {Job Title}
+    **Company:** {Company}  
+    **Location:** {Location}  
+    **Apply:** {URL}
+
+    --- repeat for each job ---
+
+    RULES
+    - One job per block
+    - Use clickable markdown links
+    - Use clean spacing
+    - Do not add commentary
+    - Do not add extra sections
+    - Do not summarize
+    - Use only tool data
     `
     },
     { role: "user", content: message }
-    ];
+    ]
 
   try {
 
@@ -156,14 +106,12 @@ export async function chatStreamHandler(req, res) {
       })
 
       const completion = await client.chat.completions.create({
-        model: "nvidia/nemotron-3-nano-30b-a3b:free",
+        model: "google/gemini-2.5-flash-lite",
         messages,
         tools
       })
 
       const msg = completion.choices[0].message
-
-      /* ---------- TOOL CALL ---------- */
 
       if (msg.tool_calls) {
 
@@ -189,14 +137,14 @@ export async function chatStreamHandler(req, res) {
           messages.push({
             role: "tool",
             tool_name: call.function.name,
+            name : call.function.name,
+            tool_call_id: call.id,
             content: JSON.stringify(result)
           })
         }
 
         continue
       }
-
-      /* ---------- FINAL RESPONSE ---------- */
 
       sendEvent(res, {
         type: "message",
