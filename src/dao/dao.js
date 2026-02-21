@@ -81,7 +81,42 @@ export default class PostgresDao {
     }
 
     const result = await db.query(query, values);
+    console.log("ressss" , result)
     return result.rows;
+  }
+
+  async getAllRowsForChat({
+    db = getPgPool(),
+    columns = ['*'],     
+    where,
+    orderBy,
+    limit,
+    offset,
+    tableName = this.tableName,
+  } = {}) {
+  
+    const selectCols = Array.isArray(columns)
+      ? columns.join(', ')
+      : columns
+  
+    let query = `SELECT ${selectCols} FROM ${tableName}`
+    const values = []
+  
+    if (where) query += ' WHERE ' + where
+    if (orderBy) query += ' ORDER BY ' + orderBy
+  
+    if (limit) {
+      query += ' LIMIT $' + (values.length + 1)
+      values.push(limit)
+    }
+  
+    if (offset !== undefined) {
+      query += ' OFFSET $' + (values.length + 1)
+      values.push(offset)
+    }
+  
+    const result = await db.query(query, values)
+    return result.rows
   }
 
   async insertOrUpdateMultipleObjs({

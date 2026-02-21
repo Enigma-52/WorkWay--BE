@@ -13,7 +13,7 @@ router.get('/generate_embeddings', async (req, res) => {
   res.json(embeddings);
 });
 
-router.get('/search_jobs', async (req, res) => {
+router.get('/query_jobs', async (req, res) => {
   const queryText = req.query.queryText;
   const jobs = await searchJobsByQuery(queryText);
   res.json(jobs);
