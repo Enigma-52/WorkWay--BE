@@ -1,4 +1,5 @@
 import { defaultPgDao, runPgStatement } from '../dao/dao.js';
+import { buildJobEmbeddingText } from '../utils/helper.js';
 import OpenAI from 'openai';
 
 const client = new OpenAI({
@@ -117,4 +118,93 @@ export async function generateCompanyDesc() {
 
   // 2. Parallel enrichment with bounded concurrency
   return runWithConcurrency(companies, CONCURRENCY, enrichSingleCompany);
+}
+
+export async function generateEmbeddings(type) {
+    if(type === 'jobs')
+    {
+        await generateJobEmbeddings();
+        return;
+    }
+    // else if(type === 'company')
+    // {
+    //     await generateCompanyEmbeddings();
+    //     return;
+    // }
+    // else
+    // {
+    //     throw new Error('Invalid type');
+    // }
+}
+
+const FETCH_LIMIT = 100;   // how many rows to fetch per DB call
+const BATCH_SIZE = 20;     // how many embeddings to run in parallel
+
+export async function generateEmbedding(text) {
+    const completion = await client.embeddings.create({
+        model: 'openai/text-embedding-3-small',
+        input: text,
+    });
+    return completion.data[0].embedding;
+}
+
+export async function generateJobEmbeddings() {
+    while (true) {
+        const jobs = await defaultPgDao.getAllRows({
+            tableName: 'jobs',
+            where: "embedding IS NULL",
+            limit: FETCH_LIMIT,
+            orderBy: 'id DESC',
+        });
+
+        if (jobs.length === 0) return;
+
+        // split into batches
+        for (let i = 0; i < jobs.length; i += BATCH_SIZE) {
+            const batch = jobs.slice(i, i + BATCH_SIZE);
+
+            await Promise.all(
+                batch.map(async (job) => {
+                    const embeddingText = await buildJobEmbeddingText(job);
+                    const embedding = await generateEmbedding(embeddingText);
+                    const vectorLiteral = `[${embedding.join(',')}]`;
+
+                    await runPgStatement({
+                        query: `UPDATE jobs SET embedding = $1::vector WHERE id = $2`,
+                        values: [vectorLiteral, job.id],
+                    });
+                })
+            );
+
+            console.log(`Processed batch of ${batch.length}`);
+        }
+    }
+}
+
+export async function searchJobsByQuery(queryText) {
+    // 1. generate embedding for query
+    const embedding = await generateEmbedding(queryText);
+    const vectorLiteral = `[${embedding.join(',')}]`;
+
+    // 2. similarity search (cosine distance)
+    const result = await runPgStatement({
+        query: `
+            SELECT 
+                title,
+                company,
+                1 - (embedding <=> $1::vector) AS similarity
+            FROM jobs
+            WHERE embedding IS NOT NULL
+            ORDER BY embedding <=> $1::vector
+            LIMIT 5
+        `,
+        values: [vectorLiteral],
+    });
+
+    // 3. return formatted results
+    return result.map(r => ({
+        title: r.title,
+        company: r.company,
+        similarity: Number(r.similarity),
+    }));
 }

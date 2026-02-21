@@ -1,4 +1,5 @@
 import { greenhouseCompanies } from '../data/greenhouseCompanies.js';
+import { matchSkillsInText } from '../data/skills.js';
 import {
   parseGreenhouseJobDescription,
   getExperienceLevel,
@@ -14,7 +15,7 @@ export async function getJobs(company) {
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   const result = await response.json();
   // Return the first 5 jobs
-  return result.jobs;
+  return result.jobs.slice(0,2);
 }
 
 export async function getJobDescription(company, jobId) {
@@ -36,7 +37,10 @@ export async function fetchGreenhouseJobs() {
         try {
           const desc = await getJobDescription(company.namespace, job.id);
           const sections = await parseGreenhouseJobDescription(desc.content);
-
+          const sectionText = sections
+            .map((s) => [s.heading, ...(s.content || [])].join(' '))
+            .join('\n');
+          const skills = matchSkillsInText(sectionText);
           const jobSlugRaw = company.slug + '-' + job.title + '-' + job.id;
           const jobSlug = jobSlugRaw
             .toLowerCase()
@@ -62,6 +66,7 @@ export async function fetchGreenhouseJobs() {
             employment_type,
             domain,
             location: job.location ? job.location.name : 'Worldwide',
+            skills: JSON.stringify(skills),
             updated_at: new Date().toISOString(),
           };
           return dbRow;
@@ -113,6 +118,7 @@ export async function insertGreenhouseJobsToDb(jobs) {
       job.employment_type,
       job.domain,
       job.location,
+      job.skills,
       job.updated_at,
     ]);
 
@@ -131,6 +137,7 @@ export async function insertGreenhouseJobsToDb(jobs) {
         'employment_type',
         'domain',
         'location',
+        'skills',
         'updated_at',
       ],
       multiRowsColValuesList,
@@ -142,6 +149,7 @@ export async function insertGreenhouseJobsToDb(jobs) {
         'employment_type',
         'domain',
         'location',
+        'skills',
         'updated_at',
       ],
       conflictColumns: ['slug'],

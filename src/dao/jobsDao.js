@@ -1,16 +1,16 @@
 import PostgresDao from './dao.js';
 
 const JOB_FEED_COLS =
-  'j.id,j.company_id,j.company,j.slug,j.platform,j.title,j.url,j.experience_level,j.employment_type,j.location,j.domain,j.updated_at';
+  'j.id,j.company_id,j.company,j.slug,j.platform,j.title,j.url,j.experience_level,j.employment_type,j.location,j.domain,j.skills,j.updated_at';
 const JOB_LIST_SELECT =
-  'j.id,j.company_id,j.company,j.slug,j.platform,j.title,j.url,j.description,j.experience_level,j.employment_type,j.location,j.domain,j.updated_at,j.created_at,c.logo_url AS company_logo_url,c.slug AS company_slug';
+  'j.id,j.company_id,j.company,j.slug,j.platform,j.title,j.url,j.description,j.experience_level,j.employment_type,j.location,j.domain,j.skills,j.updated_at,j.created_at,c.logo_url AS company_logo_url,c.slug AS company_slug';
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 
 /**
  * Builds WHERE clauses and values for list/count/facet queries.
- * @param {Object} filters - Normalized filters: { q, domain, employment_type, experience_level, location, company_slug }
+ * @param {Object} filters - Normalized filters: { q, domain, employment_type, experience_level, location, company_slug, skill_slug? }
  * @param {{ excludeFacet?: string }} opts - If set ('domain'|'employment_type'|'experience_level'), that filter is omitted (for facet counts).
  * @returns {{ whereClauses: string[], values: any[] }}
  */
@@ -18,6 +18,15 @@ function buildListWhere(filters, opts = {}) {
   const whereClauses = [];
   const values = [];
   let paramIndex = 1;
+
+  if (filters.skill_slug != null && String(filters.skill_slug).trim() !== '') {
+    const slug = String(filters.skill_slug).trim().toLowerCase();
+    whereClauses.push(
+      `EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(j.skills, '[]'::jsonb)) AS elem WHERE elem->>'slug' = $${paramIndex})`
+    );
+    values.push(slug);
+    paramIndex += 1;
+  }
 
   if (filters.q && filters.q.trim()) {
     const pattern = `%${filters.q.trim().replace(/%/g, '\\%')}%`;

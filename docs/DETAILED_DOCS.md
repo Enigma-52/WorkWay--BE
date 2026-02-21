@@ -242,6 +242,7 @@ Company ingestion builds logo URL with `img.logo.dev` tokenized format.
 - `employment_type` text
 - `domain` text
 - `location` text
+- `skills` jsonb (array of `{ name, slug }`; matched from job description via `src/data/skills.js` patterns; returned in job list and details for tags on cards)
 - `updated_at` timestamp
 - `created_at` timestamp
 

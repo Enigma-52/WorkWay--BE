@@ -286,3 +286,24 @@ export async function pickRelevantDescriptionSections(description) {
 
   return preview || null;
 }
+
+
+export async function buildJobEmbeddingText(job) {
+  const sections = job.description
+    .map(section => {
+      const content = section.content.join("\n");
+      return `${section.heading}:\n${content}`;
+    })
+    .join("\n\n");
+
+  return `
+Job Title: ${job.title}
+Company: ${job.company}
+Location: ${job.location}
+Employment Type: ${job.employment_type}
+Experience Level: ${job.experience_level}
+Domain: ${job.domain}
+
+${sections}
+`.trim();
+}

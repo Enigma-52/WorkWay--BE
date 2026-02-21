@@ -1,4 +1,5 @@
 import { jobsDao, DEFAULT_LIMIT, MAX_LIMIT } from '../dao/jobsDao.js';
+import { getSkillBySlug } from '../data/skills.js';
 import { JOB_DOMAINS, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../utils/constants.js';
 import { pickRelevantDescriptionSections } from '../utils/helper.js';
 
@@ -34,13 +35,16 @@ const SORT_VALUES = ['recent'];
 
 /**
  * Normalizes and validates list query params. Returns either { filters, page, limit, sort } or { error, status, message }.
- * @param {{ q?: string, page?: string|number, limit?: string|number, sort?: string, domain?: string, employment_type?: string, experience_level?: string, location?: string, company_slug?: string }} query
+ * @param {{ q?: string, page?: string|number, limit?: string|number, sort?: string, domain?: string, employment_type?: string, experience_level?: string, location?: string, company_slug?: string, skill?: string, skill_slug?: string }} query
  */
 export function normalizeAndValidateListParams(query) {
   const q = typeof query.q === 'string' ? query.q.trim() : '';
   const page = Math.max(1, parseInt(query.page, 10) || 1);
   const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(query.limit, 10) || DEFAULT_LIMIT));
   const sort = SORT_VALUES.includes(query.sort) ? query.sort : 'recent';
+
+  const skillSlugRaw = typeof (query.skill ?? query.skill_slug) === 'string' ? String(query.skill ?? query.skill_slug).trim().toLowerCase() : '';
+  const skill_slug = skillSlugRaw === '' ? null : skillSlugRaw;
 
   const domainRaw = typeof query.domain === 'string' ? query.domain.trim().toLowerCase() : 'all';
   let domainName = null;
@@ -94,6 +98,7 @@ export function normalizeAndValidateListParams(query) {
     experience_level: experienceLevel,
     location: location || null,
     company_slug: companySlug || null,
+    skill_slug: skill_slug,
   };
 
   return {
@@ -108,6 +113,7 @@ export function normalizeAndValidateListParams(query) {
       experience_level: experienceLevelRaw === 'all' || !experienceLevelRaw ? 'all' : (experienceLevel ?? experienceLevelRaw),
       location: location || undefined,
       company_slug: companySlug || undefined,
+      skill: skill_slug ?? undefined,
       sort,
     },
   };
@@ -182,12 +188,19 @@ export async function getJobList(params) {
     has_prev: page > 1,
   };
 
-  return {
+  const payload = {
     jobs,
     meta,
     applied_filters: applied_filters_for_response,
     facets: formatFacets(facets),
   };
+
+  if (filters.skill_slug) {
+    const skillInfo = getSkillBySlug(filters.skill_slug);
+    payload.skill = skillInfo ? { name: skillInfo.name, slug: skillInfo.slug } : { name: null, slug: filters.skill_slug };
+  }
+
+  return payload;
 }
 
 /**
