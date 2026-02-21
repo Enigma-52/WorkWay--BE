@@ -65,6 +65,10 @@ Route groups:
 - `/api/cron`
 - `/api/sitemap.xml` and `/api/sitemaps/*`
 
+### Jobs page (list + filters)
+- `GET /api/job/list` — Paginated job listing with search and filters (e.g. `?q=backend&page=1&limit=20&domain=software-engineering&employment_type=full-time&experience_level=senior&location=remote&sort=recent`). Returns `jobs`, `meta`, `applied_filters`, and `facets`.
+- `GET /api/job/filters` — Facet counts for domain, employment type, and experience level (for initial filter UI).
+
 See detailed request/response behavior in:
 - `docs/DETAILED_DOCS.md`
 

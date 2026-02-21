@@ -22,3 +22,18 @@ export const JOB_DOMAINS = [
   { name: 'Research', slug: 'research' },
   { name: 'Other', slug: 'other' },
 ];
+
+/** Values populated by cron (helper.js getEmploymentType). Used for filter validation. */
+export const EMPLOYMENT_TYPES = ['Full-Time', 'Part-Time', 'Contract'];
+
+/** Values populated by cron (helper.js getExperienceLevel). Used for filter validation. */
+export const EXPERIENCE_LEVELS = [
+  'Director',
+  'Lead',
+  'Manager',
+  'Staff',
+  'Senior',
+  'Mid-level',
+  'Junior',
+  'Intern',
+];

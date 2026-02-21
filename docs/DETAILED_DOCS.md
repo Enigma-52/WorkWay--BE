@@ -51,7 +51,7 @@ Base: `/api/company`
   - `recently_added`
   - `actively_hiring`
 
-### 3.2 Job Endpoint
+### 3.2 Job Endpoints
 Base: `/api/job`
 
 1. `GET /api/job/details?slug=<job-slug>`
@@ -61,6 +61,31 @@ Base: `/api/job`
   - Fetch similar jobs by same domain (excluding slug, limit 3).
   - Fetch other jobs by same company (excluding slug, limit 3).
 - Returns enriched job payload.
+
+2. `GET /api/job/list`
+- Service: `getJobList` (after `normalizeAndValidateListParams`).
+- Query params:
+  - `q` (string, optional): text search on title, company, location (ILIKE).
+  - `page` (number, default 1)
+  - `limit` (number, default 20, max 50)
+  - `sort` (`recent` default; future: `relevance`)
+  - `domain` (slug from `JOB_DOMAINS` or `all`)
+  - `employment_type` (`all` or one of: Full-Time, Part-Time, Contract)
+  - `experience_level` (`all` or one of: Director, Lead, Manager, Staff, Senior, Mid-level, Junior, Intern)
+  - `location` (string, optional, ILIKE match)
+  - `company_slug` (optional)
+- Validation: invalid `domain` / `employment_type` / `experience_level` return `400` with message.
+- Response shape:
+  - `jobs`: array of job cards (id, company_id, company, slug, platform, title, url, experience_level, employment_type, location, domain, updated_at, created_at, company_logo_url, company_slug)
+  - `meta`: `{ page, limit, total, total_pages, has_next, has_prev }`
+  - `applied_filters`: normalized filters used by backend
+  - `facets`: `{ domains: [{ slug, name, count }], employment_types: [{ value, count }], experience_levels: [{ value, count }] }`
+- Empty result set: `200` with `jobs: []`.
+
+3. `GET /api/job/filters`
+- Service: `getJobFilters`.
+- Used for initial `/jobs` page load and filter UI hydration.
+- Response shape: `{ facets: { domains, employment_types, experience_levels } }` (same structure as in `/list`, counts are global).
 
 ### 3.3 Feed Endpoint
 Base: `/api/feed`
@@ -149,9 +174,16 @@ Upsert behavior:
 - Retries without `updated_at` if column is missing (`42703` handling).
 
 ### 4.2 Specialized DAOs
-- `jobsDao`: feed queries, single job query, exclusion-based related jobs.
+- `jobsDao`: feed queries, single job query, exclusion-based related jobs; **list**: `searchJobs`, `countJobs`, `getJobFacets` for `/api/job/list` and `/api/job/filters`.
 - `companyDao`: paginated list/count and overview blocks.
 - `filtersDao`: domain filtering join query and per-domain counts.
+
+### 4.3 Jobs list query strategy
+- Dynamic `WHERE` with parameterized bindings (no string interpolation).
+- Text search (phase 1): `ILIKE` on `title`, `company`, `location`.
+- Stable order: `ORDER BY created_at DESC, id DESC`.
+- Pagination: offset-based (`page`, `limit`); cursor variant reserved for phase 2.
+- Index recommendations (see `docs/JOBS_PAGE_PLAN.md`): `(created_at DESC, id DESC)`, `(domain)`, `(employment_type)`, `(experience_level)`, `(company_id)`, and optionally `(location)` or trigram for ILIKE.
 
 ## 5) Utility Logic
 
