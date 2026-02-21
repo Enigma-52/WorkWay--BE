@@ -14,7 +14,7 @@ export async function getJobs(company) {
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   const result = await response.json();
   // Return the first 5 jobs
-  return result.jobs.slice(0, 5);
+  return result.jobs;
 }
 
 export async function getJobDescription(company, jobId) {
@@ -24,20 +24,14 @@ export async function getJobDescription(company, jobId) {
 }
 
 export async function fetchGreenhouseJobs() {
-  const result = [];
-
   const companies = await defaultPgDao.getAllRows({
     tableName: 'companies',
     where: "platform = 'greenhouse'",
   });
 
-  console.log(`Fetched ${companies.length} greenhouse companies from DB`);
-
   const companyPromises = companies.map(async (company) => {
     try {
-      console.log(`Fetching jobs for company: ${company.name}`);
       const jobs = await getJobs(company.namespace);
-      console.log(`Found ${jobs.length} jobs for ${company.name}`);
       const jobPromises = jobs.map(async (job) => {
         try {
           const desc = await getJobDescription(company.namespace, job.id);
@@ -70,33 +64,32 @@ export async function fetchGreenhouseJobs() {
             location: job.location ? job.location.name : 'Worldwide',
             updated_at: new Date().toISOString(),
           };
-          console.log(`Processed job: ${job.title} (${job.id})`);
           return dbRow;
         } catch (error) {
-          console.error(`Failed to fetch job ${job.id} for company ${company.name}:`, error);
+          console.error(`Greenhouse: failed job ${job.id} (${company.name}):`, error.message);
           return null;
         }
       });
-      return await Promise.all(jobPromises);
+      const companyJobs = (await Promise.all(jobPromises)).filter((job) => job !== null);
+      await insertGreenhouseJobsToDb(companyJobs);
+      if (companyJobs.length > 0) {
+        console.log(`Greenhouse: saved ${companyJobs.length} jobs for ${company.name}`);
+      }
+      return companyJobs.length;
     } catch (error) {
-      console.error(`Failed to fetch jobs for company ${company.name}:`, error);
-      return [];
+      console.error(`Greenhouse: failed company ${company.name}:`, error.message);
+      return 0;
     }
   });
 
-  const allJobs = await Promise.all(companyPromises);
-  const flattenedJobs = allJobs.flat().filter((job) => job !== null);
-  console.log(`Total jobs fetched: ${flattenedJobs.length}`);
-  result.push(...flattenedJobs);
-  await insertGreenhouseJobsToDb(result);
-  return { message: 'Fetched and stored greenhouse jobs successfully', count: result.length };
+  const counts = await Promise.all(companyPromises);
+  const totalSaved = counts.reduce((a, b) => a + b, 0);
+  console.log(`Greenhouse: completed, total jobs saved: ${totalSaved}`);
+  return { message: 'Fetched and stored greenhouse jobs successfully', count: totalSaved };
 }
 
 export async function insertGreenhouseJobsToDb(jobs) {
-  if (!jobs || jobs.length === 0) {
-    console.log('No jobs to insert');
-    return;
-  }
+  if (!jobs || jobs.length === 0) return;
 
   const BATCH_SIZE = 50;
   const batches = [];
@@ -104,8 +97,6 @@ export async function insertGreenhouseJobsToDb(jobs) {
   for (let i = 0; i < jobs.length; i += BATCH_SIZE) {
     batches.push(jobs.slice(i, i + BATCH_SIZE));
   }
-
-  console.log(`Inserting ${jobs.length} jobs in ${batches.length} batches`);
 
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
@@ -156,8 +147,6 @@ export async function insertGreenhouseJobsToDb(jobs) {
       conflictColumns: ['slug'],
       returningCol: 'id',
     });
-
-    console.log(`Inserted batch ${i + 1}/${batches.length}`);
   }
 }
 
