@@ -7,13 +7,6 @@
 /** UI display names for each skill type (for pages, filters, breadcrumbs). */
 
 /** Turn a label into a URL-safe slug (lowercase, hyphen-separated). */
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
 export const SKILL_TYPE_UI_NAMES = {
   programming: "Programming Languages",
   framework: "Frameworks & Libraries",
@@ -269,7 +262,6 @@ export const SKILLS = [
 
   { name: "MLflow", type: "ml_ops", patterns: ["mlflow"] },
   { name: "Kubeflow", type: "ml_ops", patterns: ["kubeflow"] },
-  { name: "Model serving", type: "ml_ops", patterns: ["model serving"] },
 
   { name: "Google Analytics", type: "analytics_tracking", patterns: ["google analytics"] },
   { name: "Mixpanel", type: "analytics_tracking", patterns: ["mixpanel"] },
@@ -297,7 +289,6 @@ export const SKILLS = [
   { name: "Magento", type: "ecommerce", patterns: ["magento"] },
 
   
-  { name: "LangChain", type: "data_ml", patterns: ["langchain"] },
   { name: "Vector databases", type: "data_ml", patterns: ["vector database"] },
   { name: "FAISS", type: "data_ml", patterns: ["faiss"] },
   { name: "Pinecone", type: "data_ml", patterns: ["pinecone"] },
@@ -381,6 +372,25 @@ export const SKILLS = [
 { name: "Stable Diffusion", type: "llm_engineering", patterns: ["stable diffusion"] },
 
 ];
+
+
+export function slugify(text) {
+
+  const map = {
+    "C++": "cpp",
+    "C#": "csharp",
+    "F#": "fsharp"
+  };
+
+  if (map[text]) return map[text];
+
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+
 
 /**
  * Skill types with slug (from uiName), UI name, and list of skill names.
