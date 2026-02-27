@@ -81,7 +81,6 @@ export default class PostgresDao {
     }
 
     const result = await db.query(query, values);
-    console.log("ressss" , result)
     return result.rows;
   }
 

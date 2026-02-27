@@ -1,10 +1,13 @@
 import { greenhouseCompanies } from '../data/greenhouseCompanies.js';
+import { leverCompanies } from '../data/leverCompanies.js';
 import { matchSkillsInText } from '../data/skills.js';
 import {
   parseGreenhouseJobDescription,
   getExperienceLevel,
   getEmploymentType,
   getJobDomain,
+  normalizeLeverDescription,
+  uuidToBase62
 } from '../utils/helper.js';
 import { defaultPgDao } from '../dao/dao.js';
 
@@ -202,12 +205,12 @@ export async function insertGreenhouseCompanies() {
 
   const dedupedCompanies = Array.from(bySlug.values());
 
-  await insertGreenhouseCompaniesToDb(dedupedCompanies);
+  await insertCompaniesToDb(dedupedCompanies);
 
   return { message: 'Inserted greenhouse companies successfully', count: companies.length };
 }
 
-export async function insertGreenhouseCompaniesToDb(companies) {
+export async function insertCompaniesToDb(companies) {
   const multiRowsColValuesList = companies.map((company) => [
     company.name,
     company.description,
@@ -233,6 +236,167 @@ export async function insertGreenhouseCompaniesToDb(companies) {
     ],
     multiRowsColValuesList,
     updateColumnNames: ['description', 'logo_url', 'location', 'website', 'platform', 'namespace'],
+    conflictColumns: ['slug'],
+    returningCol: 'id',
+  });
+}
+
+
+///// LEVER /////
+
+
+export async function insertLeverCompanies() {
+  const uniqueCompanies = [...new Set(leverCompanies)];
+  const companyPromises = uniqueCompanies.map(async (company) => {
+    try {
+      const companyName = company;
+      const companyDescription = 'No description available';
+
+      const dbRow = {
+        name: companyName,
+        description: companyDescription,
+        slug: companyName.toLowerCase().replace(/\s+/g, '-'),
+        logo_url: `https://img.logo.dev/${company.toLowerCase()}.com?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
+        location: JSON.stringify({}),
+        website: null,
+        platform: 'lever',
+        namespace: company.toLowerCase(),
+      };
+      return dbRow;
+    } catch (error) {
+      console.error(`Failed to fetch company ${company}:`, error);
+      return null;
+    }
+  });
+
+  const results = await Promise.all(companyPromises);
+  const companies = results.filter((c) => c !== null);
+
+  // DEDUPE BY SLUG (THIS IS THE IMPORTANT PART)
+  const bySlug = new Map();
+
+  for (const c of companies) {
+    if (!bySlug.has(c.slug)) {
+      bySlug.set(c.slug, c);
+    } else {
+      console.log('Duplicate slug detected, dropping:', c.slug);
+    }
+  }
+
+  const dedupedCompanies = Array.from(bySlug.values());
+
+  await insertCompaniesToDb(dedupedCompanies);
+
+  return { message: 'Inserted lever companies successfully', count: companies.length };
+
+}
+
+export async function fetchLeverJobs() {
+  const companies = await defaultPgDao.getAllRows({
+    tableName: 'companies',
+    where: "platform = 'lever'",
+  });
+  console.log("TOTAL " , companies.length )
+  for (const company of companies) {
+    const companyName = company.name;
+    const apiUrl = `https://api.lever.co/v0/postings/${companyName.toLowerCase()}?mode=json`;
+    try {
+      const response = await fetch(apiUrl);
+      const results = await response.json();
+      if (!results || results.ok === false) {
+        console.log("No jobs to fetch , skipping for " , companyName)
+        continue;
+      }
+      const jobsArray = [];
+      for (const job of results) {
+        const desc = normalizeLeverDescription(job);
+        const jobId = await uuidToBase62(job.id);
+        const jobSlugRaw = company.slug + '-' + job.text + '-' + jobId;
+        const jobSlug = jobSlugRaw
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        const [experience_level, employment_type, domain] = await Promise.all([
+              getExperienceLevel(job.text),
+              getEmploymentType(job.text),
+              getJobDomain(job.text),
+            ]);
+        const dbRow = {
+          company: company.name,
+          company_id: company.id,
+          slug: jobSlug,
+          platform: 'lever',
+          job_id: jobId,
+          title: job.text,
+          url: job.applyUrl,
+          description: JSON.stringify(desc),
+          experience_level,
+          employment_type,
+          domain,
+          location: job.categories.location,
+          skills: JSON.stringify([]),
+          updated_at: new Date().toISOString(),
+        };
+        jobsArray.push(dbRow);
+      }
+      const insertedJobs = await insertLeverJobs(jobsArray)
+      console.log("Inserting " , jobsArray.length , " jobs into DB for " , companyName)
+    } catch (error) {
+      console.error(`Error fetching jobs for ${companyName}:`, error);
+    }
+  }
+  return { message: 'Fetched lever jobs and inserted successfully' };
+}
+
+export async function insertLeverJobs(jobsArray)
+{
+  const multiRowsColValuesList = jobsArray.map((job) => [
+    job.company,
+    job.company_id,
+    job.slug,
+    job.platform,
+    job.job_id,
+    job.title,
+    job.url,
+    job.description,
+    job.experience_level,
+    job.employment_type,
+    job.domain,
+    job.location,
+    job.skills,
+    job.updated_at,
+  ]);
+
+  await defaultPgDao.insertOrUpdateMultipleObjs({
+    tableName: 'jobs',
+    columnNames: [
+      'company',
+      'company_id',
+      'slug',
+      'platform',
+      'job_id',
+      'title',
+      'url',
+      'description',
+      'experience_level',
+      'employment_type',
+      'domain',
+      'location',
+      'skills',
+      'updated_at',
+    ],
+    multiRowsColValuesList,
+    updateColumnNames: [
+      'title',
+      'url',
+      'description',
+      'experience_level',
+      'employment_type',
+      'domain',
+      'location',
+      'skills',
+      'updated_at',
+    ],
     conflictColumns: ['slug'],
     returningCol: 'id',
   });

@@ -1,5 +1,5 @@
 import express from 'express';
-import { fetchGreenhouseJobs, insertGreenhouseCompanies } from '../services/cronService.js';
+import { fetchGreenhouseJobs, insertGreenhouseCompanies , insertLeverCompanies , fetchLeverJobs} from '../services/cronService.js';
 import { backfillSkillsFromStoredDescriptions } from '../services/backfillService.js'
 
 const router = express.Router();
@@ -12,6 +12,16 @@ router.get('/insert_greenhouse', async (req, res) => {
 
 router.get('/insert_greenhouse_companies', async (req, res) => {
   const result = await insertGreenhouseCompanies();
+  res.json(result);
+});
+
+router.get('/insert_lever_jobs', async (req, res) => {
+  const result = await fetchLeverJobs();
+  res.json(result);
+});
+
+router.get('/insert_lever_companies', async (req, res) => {
+  const result = await insertLeverCompanies();
   res.json(result);
 });
 

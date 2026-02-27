@@ -111,7 +111,6 @@ export async function generateCompanyDesc() {
   const companies = await defaultPgDao.getAllRows({
     tableName: 'companies',
     where: "description = 'No description available'",
-    limit: 100, // unchanged
   });
 
   if (companies.length === 0) return [];

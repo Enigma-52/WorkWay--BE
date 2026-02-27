@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import he from 'he';
+import basex from "base-x";
 
 export async function getJobDomain(title) {
   const t = ` ${title.toLowerCase().replace(/[,]/g, ' ')} `;
@@ -306,4 +307,78 @@ Domain: ${job.domain}
 
 ${sections}
 `.trim();
+}
+
+
+export function normalizeLeverDescription(job) {
+  if (job.lists && job.lists.length > 0) {
+    return convertLeverLists(job.lists); // your existing function
+  }
+
+  return parseDescriptionSections(
+    job.descriptionBody || job.description || ""
+  );
+}
+
+export function convertLeverLists(lists = []) {
+  return lists.map(section => {
+    const $ = cheerio.load(`<ul>${section.content || ""}</ul>`);
+
+    const items = $("li")
+      .map((_, el) => $(el).text().replace(/\s+/g, " ").trim())
+      .get()
+      .filter(Boolean);
+
+    return {
+      heading: section.text?.trim() || "",
+      content: items
+    };
+  });
+}
+
+export function parseDescriptionSections(html = "") {
+  const $ = cheerio.load(html);
+
+  const sections = [];
+  let current = null;
+
+  $("div").each((_, el) => {
+    const div = $(el);
+
+    // check if this div contains a bold heading
+    const heading = div.find("b").first().text().trim();
+
+    if (heading) {
+      // start new section
+      if (current) sections.push(current);
+
+      current = {
+        heading: heading.replace(/:$/, ""),
+        content: []
+      };
+      return;
+    }
+
+    // normal content block
+    const text = div.text().replace(/\s+/g, " ").trim();
+    if (!text) return;
+
+    if (!current) {
+      // content before first heading → generic section
+      current = { heading: "Overview", content: [] };
+    }
+
+    current.content.push(text);
+  });
+
+  if (current) sections.push(current);
+
+  return sections;
+}
+
+const BASE62 = basex("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+
+export async function uuidToBase62(uuid) {
+  const hex = uuid.replace(/-/g, "");
+  return BASE62.encode(Buffer.from(hex, "hex"));
 }
