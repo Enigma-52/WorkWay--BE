@@ -5,6 +5,15 @@
  */
 
 /** UI display names for each skill type (for pages, filters, breadcrumbs). */
+
+/** Turn a label into a URL-safe slug (lowercase, hyphen-separated). */
+function slugify(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 export const SKILL_TYPE_UI_NAMES = {
   programming: "Programming Languages",
   framework: "Frameworks & Libraries",
@@ -23,15 +32,27 @@ export const SKILL_TYPE_UI_NAMES = {
   hardware: "Hardware",
   eda_tool: "EDA Tools",
   soft_skill: "Soft Skills",
+  observability: "Observability & Monitoring",
+  message_queue: "Messaging & Streaming",
+  search_engine: "Search & Indexing",
+  build_tool: "Build Tools",
+  package_manager: "Package Managers",
+  runtime: "Runtimes & Platforms",
+  auth_identity: "Authentication & Identity",
+  api_gateway: "API Gateway & Service Mesh",
+  infra_platform: "Platform Engineering",
+  data_engineering: "Data Engineering",
+  ml_ops: "MLOps & Model Ops",
+  analytics_tracking: "Analytics & Product Tracking",
+  game_dev: "Game Development",
+  ar_vr: "AR / VR",
+  blockchain: "Blockchain & Web3",
+  embedded: "Embedded Systems",
+  desktop_dev: "Desktop Development",
+  cms: "CMS & Web Platforms",
+  ecommerce: "E-commerce Platforms",
+  llm_engineering: "LLM & Generative AI Engineering"
 };
-
-/** Turn a label into a URL-safe slug (lowercase, hyphen-separated). */
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 export const SKILLS = [
   // —— Programming languages ——
@@ -41,7 +62,7 @@ export const SKILLS = [
   { name: "Java", type: "programming", patterns: ["java"] },
   { name: "Kotlin", type: "programming", patterns: ["kotlin"] },
   { name: "Swift", type: "programming", patterns: ["swift"] },
-  { name: "Go", type: "programming", patterns: ["golang", " go "] },
+  { name: "Go", type: "programming", patterns: ["golang"] },
   { name: "Rust", type: "programming", patterns: ["rust"] },
   { name: "C++", type: "programming", patterns: ["c++", "cpp", "c plus plus"] },
   { name: "C#", type: "programming", patterns: ["c#", "csharp"] },
@@ -52,6 +73,11 @@ export const SKILLS = [
   { name: "Shell scripting", type: "programming", patterns: ["shell", "bash", "zsh"] },
   { name: "Objective-C", type: "programming", patterns: ["objective-c", "objc"] },
   { name: "OCaml", type: "programming", patterns: ["ocaml"] },
+  { name: "R", type: "programming", patterns: ["r language"] },
+  { name: "MATLAB", type: "programming", patterns: ["matlab"] },
+  { name: "Haskell", type: "programming", patterns: ["haskell"] },
+  { name: "Elixir", type: "programming", patterns: ["elixir"] },
+  { name: "Dart", type: "programming", patterns: ["dart"] },
 
   // —— Web / Frontend frameworks & libs ——
   { name: "React", type: "framework", patterns: ["react", "reactjs"] },
@@ -67,10 +93,16 @@ export const SKILLS = [
   { name: "HTML", type: "framework", patterns: ["html", "html5"] },
   { name: "Webpack", type: "framework", patterns: ["webpack"] },
   { name: "Vite", type: "framework", patterns: ["vite"] },
+  { name: "NestJS", type: "framework", patterns: ["nestjs", "nest.js"] },
+  { name: "Remix", type: "framework", patterns: ["remix"] },
+  { name: "Astro", type: "framework", patterns: ["astro"] },
+  { name: "Spring WebFlux", type: "framework", patterns: ["webflux"] },
+  { name: "Micronaut", type: "framework", patterns: ["micronaut"] },
+  { name: "Quarkus", type: "framework", patterns: ["quarkus"] },
 
   // —— Backend / API ——
-  { name: "Node.js", type: "framework", patterns: ["node.js", "nodejs", "node "] },
-  { name: "Express", type: "framework", patterns: ["express", "express.js"] },
+  { name: "Node.js", type: "framework", patterns: ["node.js", "nodejs"] },
+  { name: "Express", type: "framework", patterns: ["express.js"] },
   { name: "Django", type: "framework", patterns: ["django"] },
   { name: "Flask", type: "framework", patterns: ["flask"] },
   { name: "FastAPI", type: "framework", patterns: ["fastapi", "fast api"] },
@@ -92,6 +124,12 @@ export const SKILLS = [
   { name: "Snowflake", type: "database", patterns: ["snowflake"] },
   { name: "BigQuery", type: "database", patterns: ["bigquery", "big query"] },
   { name: "SQLite", type: "database", patterns: ["sqlite"] },
+  { name: "CockroachDB", type: "database", patterns: ["cockroachdb"] },
+  { name: "Neo4j", type: "database", patterns: ["neo4j"] },
+  { name: "TimescaleDB", type: "database", patterns: ["timescaledb"] },
+  { name: "ClickHouse", type: "database", patterns: ["clickhouse"] },
+  { name: "Supabase", type: "database", patterns: ["supabase"] },
+  { name: "Firebase", type: "database", patterns: ["firebase", "firestore"] },
 
   // —— Cloud & infra ——
   { name: "AWS", type: "cloud_infra", patterns: ["aws", "amazon web services"] },
@@ -143,7 +181,7 @@ export const SKILLS = [
   { name: "Pytest", type: "testing", patterns: ["pytest"] },
   { name: "JUnit", type: "testing", patterns: ["junit"] },
   { name: "Unit testing", type: "testing", patterns: ["unit test", "unit testing"] },
-  { name: "E2E testing", type: "testing", patterns: ["e2e", "end-to-end", "end to end test"] },
+  { name: "E2E testing", type: "testing", patterns: ["e2e", "end-to-end testing", "end to end test"] },
   { name: "Integration testing", type: "testing", patterns: ["integration test", "integration testing"] },
 
   // —— Data / ML / AI ——
@@ -205,6 +243,143 @@ export const SKILLS = [
   { name: "Documentation", type: "soft_skill", patterns: ["documentation", "document "] },
   { name: "Code review", type: "soft_skill", patterns: ["code review", "code reviews"] },
   { name: "Ownership", type: "soft_skill", patterns: ["ownership", "own "] },
+
+  // Observability
+  { name: "OpenTelemetry", type: "observability", patterns: ["opentelemetry"] },
+  { name: "New Relic", type: "observability", patterns: ["new relic"] },
+  { name: "Sentry", type: "observability", patterns: ["sentry"] },
+
+  { name: "Kafka", type: "message_queue", patterns: ["kafka", "apache kafka"] },
+  { name: "RabbitMQ", type: "message_queue", patterns: ["rabbitmq"] },
+  { name: "Pulsar", type: "message_queue", patterns: ["apache pulsar"] },
+  { name: "NATS", type: "message_queue", patterns: ["nats"] },
+
+  { name: "Apigee", type: "api_gateway", patterns: ["apigee"] },
+  { name: "Istio", type: "api_gateway", patterns: ["istio"] },
+  { name: "Envoy", type: "api_gateway", patterns: ["envoy"] },
+
+  { name: "Auth0", type: "auth_identity", patterns: ["auth0"] },
+  { name: "Keycloak", type: "auth_identity", patterns: ["keycloak"] },
+  { name: "Firebase Auth", type: "auth_identity", patterns: ["firebase auth"] },
+
+  { name: "Airflow", type: "data_engineering", patterns: ["airflow", "apache airflow"] },
+  { name: "dbt", type: "data_engineering", patterns: ["dbt"] },
+  { name: "Flink", type: "data_engineering", patterns: ["flink", "apache flink"] },
+  { name: "Delta Lake", type: "data_engineering", patterns: ["delta lake"] },
+
+  { name: "MLflow", type: "ml_ops", patterns: ["mlflow"] },
+  { name: "Kubeflow", type: "ml_ops", patterns: ["kubeflow"] },
+  { name: "Model serving", type: "ml_ops", patterns: ["model serving"] },
+
+  { name: "Google Analytics", type: "analytics_tracking", patterns: ["google analytics"] },
+  { name: "Mixpanel", type: "analytics_tracking", patterns: ["mixpanel"] },
+  { name: "Amplitude", type: "analytics_tracking", patterns: ["amplitude"] },
+  { name: "Segment", type: "analytics_tracking", patterns: ["segment"] },
+  { name: "PostHog", type: "analytics_tracking", patterns: ["posthog"] },
+
+  { name: "Gradle", type: "build_tool", patterns: ["gradle"] },
+  { name: "Maven", type: "build_tool", patterns: ["maven"] },
+  { name: "Bazel", type: "build_tool", patterns: ["bazel"] },
+  { name: "Turborepo", type: "build_tool", patterns: ["turborepo"] },
+
+  { name: "npm", type: "package_manager", patterns: ["npm"] },
+  { name: "Yarn", type: "package_manager", patterns: ["yarn"] },
+  { name: "pnpm", type: "package_manager", patterns: ["pnpm"] },
+
+  { name: "Solr", type: "search_engine", patterns: ["solr", "apache solr"] },
+  { name: "Meilisearch", type: "search_engine", patterns: ["meilisearch"] },
+
+  { name: "WordPress", type: "cms", patterns: ["wordpress"] },
+  { name: "Contentful", type: "cms", patterns: ["contentful"] },
+  { name: "Strapi", type: "cms", patterns: ["strapi"] },
+
+  { name: "Shopify", type: "ecommerce", patterns: ["shopify"] },
+  { name: "Magento", type: "ecommerce", patterns: ["magento"] },
+
+  
+  { name: "LangChain", type: "data_ml", patterns: ["langchain"] },
+  { name: "Vector databases", type: "data_ml", patterns: ["vector database"] },
+  { name: "FAISS", type: "data_ml", patterns: ["faiss"] },
+  { name: "Pinecone", type: "data_ml", patterns: ["pinecone"] },
+  { name: "RAG", type: "data_ml", patterns: ["retrieval augmented", "rag "] },
+
+    // —— Core LLM foundations ——
+{ name: "Large language models", type: "llm_engineering", patterns: ["large language model", "llm"] },
+{ name: "Transformers", type: "llm_engineering", patterns: ["transformers"] },
+{ name: "Tokenization", type: "llm_engineering", patterns: ["tokenization"] },
+{ name: "Embeddings", type: "llm_engineering", patterns: ["embedding", "embeddings"] },
+
+// —— Prompting ——
+{ name: "Prompt engineering", type: "llm_engineering", patterns: ["prompt engineering"] },
+{ name: "Prompt optimization", type: "llm_engineering", patterns: ["prompt optimization"] },
+{ name: "Few-shot prompting", type: "llm_engineering", patterns: ["few shot", "few-shot"] },
+{ name: "Chain-of-thought prompting", type: "llm_engineering", patterns: ["chain of thought"] },
+
+// —— Fine-tuning & adaptation ——
+{ name: "Fine-tuning", type: "llm_engineering", patterns: ["fine tuning", "finetuning"] },
+{ name: "Instruction tuning", type: "llm_engineering", patterns: ["instruction tuning"] },
+{ name: "Parameter-efficient fine-tuning", type: "llm_engineering", patterns: ["peft"] },
+{ name: "LoRA", type: "llm_engineering", patterns: ["lora", "low rank adaptation"] },
+{ name: "RLHF", type: "llm_engineering", patterns: ["rlhf", "reinforcement learning from human feedback"] },
+
+// —— Retrieval & RAG ——
+{ name: "Retrieval-augmented generation", type: "llm_engineering", patterns: ["rag", "retrieval augmented"] },
+{ name: "Semantic search", type: "llm_engineering", patterns: ["semantic search"] },
+{ name: "Hybrid search", type: "llm_engineering", patterns: ["hybrid search"] },
+{ name: "Vector indexing", type: "llm_engineering", patterns: ["vector index", "vector indexing"] },
+{ name: "ANN search", type: "llm_engineering", patterns: ["approximate nearest neighbor", "ann search"] },
+{ name: "Reranking", type: "llm_engineering", patterns: ["reranking", "re ranking"] },
+
+// —— Frameworks & tooling ——
+{ name: "LangChain", type: "llm_engineering", patterns: ["langchain"] },
+{ name: "LlamaIndex", type: "llm_engineering", patterns: ["llamaindex"] },
+{ name: "Hugging Face", type: "llm_engineering", patterns: ["huggingface", "hugging face"] },
+{ name: "Transformers library", type: "llm_engineering", patterns: ["huggingface transformers"] },
+
+// —— AI agents & orchestration ——
+{ name: "AI agents", type: "llm_engineering", patterns: ["ai agent", "ai agents"] },
+{ name: "Tool calling", type: "llm_engineering", patterns: ["tool calling"] },
+{ name: "Function calling", type: "llm_engineering", patterns: ["function calling"] },
+{ name: "Multi-agent systems", type: "llm_engineering", patterns: ["multi agent"] },
+{ name: "Agent orchestration", type: "llm_engineering", patterns: ["agent orchestration"] },
+
+// —— Model serving & inference ——
+{ name: "Model serving", type: "llm_engineering", patterns: ["model serving"] },
+{ name: "Inference optimization", type: "llm_engineering", patterns: ["inference optimization"] },
+{ name: "Quantization", type: "llm_engineering", patterns: ["quantization"] },
+{ name: "Model distillation", type: "llm_engineering", patterns: ["model distillation"] },
+{ name: "ONNX", type: "llm_engineering", patterns: ["onnx"] },
+{ name: "TensorRT", type: "llm_engineering", patterns: ["tensorrt"] },
+{ name: "Triton Inference Server", type: "llm_engineering", patterns: ["triton inference server"] },
+
+// —— Scaling & performance ——
+{ name: "Distributed training", type: "llm_engineering", patterns: ["distributed training"] },
+{ name: "Data parallelism", type: "llm_engineering", patterns: ["data parallelism"] },
+{ name: "Model parallelism", type: "llm_engineering", patterns: ["model parallelism"] },
+{ name: "DeepSpeed", type: "llm_engineering", patterns: ["deepspeed"] },
+{ name: "CUDA", type: "llm_engineering", patterns: ["cuda"] },
+{ name: "GPU acceleration", type: "llm_engineering", patterns: ["gpu acceleration"] },
+
+// —— Evaluation & safety ——
+{ name: "LLM evaluation", type: "llm_engineering", patterns: ["llm evaluation"] },
+{ name: "Model evaluation", type: "llm_engineering", patterns: ["model evaluation"] },
+{ name: "Human-in-the-loop", type: "llm_engineering", patterns: ["human in the loop"] },
+{ name: "AI safety", type: "llm_engineering", patterns: ["ai safety"] },
+{ name: "Bias mitigation", type: "llm_engineering", patterns: ["bias mitigation"] },
+{ name: "Red teaming", type: "llm_engineering", patterns: ["red teaming"] },
+
+// —— Data for LLMs ——
+{ name: "Dataset curation", type: "llm_engineering", patterns: ["dataset curation"] },
+{ name: "Synthetic data", type: "llm_engineering", patterns: ["synthetic data"] },
+{ name: "Data labeling", type: "llm_engineering", patterns: ["data labeling"] },
+{ name: "Data augmentation", type: "llm_engineering", patterns: ["data augmentation"] },
+
+// —— Open-source model ecosystem ——
+{ name: "Llama", type: "llm_engineering", patterns: ["llama"] },
+{ name: "Mistral", type: "llm_engineering", patterns: ["mistral"] },
+{ name: "Gemma", type: "llm_engineering", patterns: ["gemma"] },
+{ name: "Stable Diffusion", type: "llm_engineering", patterns: ["stable diffusion"] },
+
 ];
 
 /**

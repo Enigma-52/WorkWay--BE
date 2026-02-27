@@ -1,8 +1,8 @@
 import { runPgStatement } from "../dao/dao.js";
 import { matchSkillsInText } from "../data/skills.js";
 
-const BATCH_SIZE = 10;
-const CONCURRENCY = 1; // number of parallel DB updates
+const BATCH_SIZE = 100;
+const CONCURRENCY = 100; // number of parallel DB updates
 
 /**
  * Get jobs with empty skills but existing description
@@ -12,9 +12,8 @@ async function getJobsWithEmptySkills(limit, offset) {
     query: `
       SELECT id, description
       FROM jobs
-      WHERE platform = 'greenhouse'
+      WHERE platform = 'lever'
         AND description IS NOT NULL
-        AND (skills IS NULL OR skills = '[]'::jsonb)
       ORDER BY id
       LIMIT ${limit}
       OFFSET ${offset}
@@ -29,8 +28,7 @@ async function updateJobSkills(jobId, skills) {
   return runPgStatement({
     query: `
       UPDATE jobs
-      SET skills = $1,
-          updated_at = NOW()
+      SET skills = $1
       WHERE id = $2
     `,
     values: [JSON.stringify(skills), jobId],
@@ -94,8 +92,11 @@ export async function backfillSkillsFromStoredDescriptions() {
         if (!text) return;
 
         const skills = matchSkillsInText(text);
+        console.log(skills);
         await updateJobSkills(job.id, skills || []);
+        console.log(job.id);
         totalUpdated++;
+        console.log("Updated skills for "  , BATCH_SIZE  , " jobs.")
       } catch (err) {
         console.error("Failed job", job.id, err.message);
       }

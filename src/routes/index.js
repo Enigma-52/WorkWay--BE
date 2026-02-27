@@ -8,6 +8,7 @@ import sitemapRoutes from './sitemap.js';
 import filterPagesRoutes from './filter.js';
 import aiRoutes from './ai.js';
 import chatRoutes from './chat.js';
+import syncRoutes from './sync.js'
 
 const router = express.Router();
 
@@ -18,6 +19,8 @@ router.use('/feed', feedRoutes);
 router.use('/filter', filterPagesRoutes);
 router.use('/ai', aiRoutes);
 router.use('/chat', chatRoutes);
+router.use('/sync', syncRoutes);
+
 
 router.use('/', sitemapRoutes); // backward compatibility
 
