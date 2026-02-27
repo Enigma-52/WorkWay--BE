@@ -46,6 +46,19 @@ Introduce a hardened fetch strategy for Greenhouse endpoints:
 - Log per-run counters: requested, succeeded, failed, retried, throttled.
 - Log status-code distribution for Greenhouse calls.
 
+6. Delta ingestion by external job ID
+- Daily run fetches only the job list (`/{company}/jobs`) first.
+- Compare feed IDs with DB IDs using stable key `(platform, company_id, job_id)`.
+- Fetch full job details only for:
+  - new IDs, and
+  - existing IDs where source `updated_at` changed.
+- Avoid re-fetching details for unchanged jobs.
+
+7. Missing job lifecycle (grace-based soft delete)
+- If a DB job ID is missing from current feed, mark as missing (`missing_since` or `missing_runs += 1`).
+- Soft-delete only after a grace window (recommended: 2-3 consecutive daily runs).
+- Keep URL-level 404 verification optional and limited to borderline cases, not all missing jobs.
+
 ## Proposed Config Surface
 Use environment variables so runtime behavior can be tuned without code redeploy:
 
@@ -56,6 +69,9 @@ Use environment variables so runtime behavior can be tuned without code redeploy
 - `GREENHOUSE_REQUEST_JITTER_MS` (default: 250)
 - `GREENHOUSE_MAX_RETRIES` (default: 3)
 - `GREENHOUSE_BACKOFF_BASE_MS` (default: 500)
+- `GREENHOUSE_MISSING_GRACE_RUNS` (default: 3)
+- `GREENHOUSE_ENABLE_MISSING_URL_VERIFY` (default: false)
+- `GREENHOUSE_MISSING_URL_VERIFY_SAMPLE_SIZE` (default: 0; set >0 for selective verification)
 
 Notes:
 - Keep safe defaults conservative.
@@ -76,12 +92,19 @@ Notes:
   - job loop in each company
   - company seed ingestion in `insertGreenhouseCompanies()`
 
-4. Progressive rollout
+4. Implement daily delta pipeline (single run)
+- Step A: Pull company job lists and build `{job_id, updated_at}` map.
+- Step B: Diff against DB records by `(platform, company_id, job_id)`.
+- Step C: Fetch detail only for new/changed jobs and upsert those rows.
+- Step D: Mark feed-missing DB jobs as `missing` (do not delete immediately).
+- Step E: In same run (or cleanup task), soft-delete only if grace window exceeded.
+
+5. Progressive rollout
 - Start with low concurrency and higher delays in staging.
 - Compare data completeness and run duration vs baseline.
 - Tune knobs incrementally.
 
-5. Production rollout
+6. Production rollout
 - Deploy with conservative values first.
 - Monitor `429`/`403`/timeout rates and total ingest duration.
 - Increase throughput only if error rate remains stable.
@@ -90,6 +113,8 @@ Notes:
 Functional:
 - Same or better successful job ingestion count vs baseline window.
 - No schema or payload regressions in stored jobs/companies.
+- Unchanged jobs are not re-fetched in detail during normal daily run.
+- Missing jobs are soft-deleted only after grace threshold.
 
 Operational:
 - Greenhouse request logs always show configured `User-Agent`.
@@ -118,6 +143,9 @@ For initial production hardening:
 - `GREENHOUSE_REQUEST_JITTER_MS=200`
 - `GREENHOUSE_MAX_RETRIES=3`
 - `GREENHOUSE_BACKOFF_BASE_MS=500`
+- `GREENHOUSE_MISSING_GRACE_RUNS=3`
+- `GREENHOUSE_ENABLE_MISSING_URL_VERIFY=false`
+- `GREENHOUSE_MISSING_URL_VERIFY_SAMPLE_SIZE=0`
 
 These defaults prioritize stability over ingestion speed.
 
@@ -126,3 +154,14 @@ These defaults prioritize stability over ingestion speed.
   - `README.md` (new env vars and operational notes)
   - `docs/DETAILED_DOCS.md` (ingestion behavior and retry/concurrency model)
 - Add a short runbook entry with known-good values per environment.
+
+## Implementation Notes for Current Schema
+Current upsert conflict key for jobs is `slug`. For reliable delta sync, align lookups on stable source identity:
+- Preferred uniqueness key: `(platform, company_id, job_id)`.
+- Keep `slug` for URL use, but do not use it as the only identity key for existence/diff checks.
+
+If schema changes are needed for soft delete/missing tracking, add and document:
+- `is_active` boolean default `true`
+- `missing_since` timestamp nullable
+- `missing_runs` integer default `0`
+- `soft_deleted_at` timestamp nullable
