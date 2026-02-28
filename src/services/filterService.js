@@ -90,3 +90,8 @@ export async function getAllDomainJobs() {
 
   return jobsWithSlugs;
 }
+
+
+export async function getAllSkillGroupsJobs(){}
+
+export async function getAllSkillsJobs(){}

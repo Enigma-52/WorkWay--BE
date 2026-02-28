@@ -23,9 +23,7 @@ export async function syncSkills(){
       VALUES
       ${rows.join(",\n")};
       `;
-      
-      /* ---------- write file ---------- */
-      
+            
       fs.writeFileSync("skills_seed.sql", sql.trim());
       console.log("skills_seed.sql generated");
 }
