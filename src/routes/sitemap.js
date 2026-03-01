@@ -5,6 +5,7 @@ import {
   generateCompaniesSitemap,
   generateDomainsSitemap,
   generateJobsSitemap,
+  generateSkillsSitemap
 } from '../services/sitemapService.js';
 
 const router = express.Router();
@@ -40,6 +41,12 @@ router.get('/sitemaps/domains.xml', async (req, res) => {
 /* Jobs */
 router.get('/sitemaps/jobs.xml', async (req, res) => {
   const xml = await generateJobsSitemap();
+  res.setHeader('Content-Type', 'application/xml');
+  res.status(200).send(xml);
+});
+
+router.get('/sitemaps/skills.xml', async (req, res) => {
+  const xml = await generateSkillsSitemap();
   res.setHeader('Content-Type', 'application/xml');
   res.status(200).send(xml);
 });

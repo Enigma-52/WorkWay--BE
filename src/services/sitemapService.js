@@ -49,6 +49,7 @@ export function generateSitemapIndex() {
     sitemapTag('/sitemaps/companies.xml'),
     sitemapTag('/sitemaps/domains.xml'),
     sitemapTag('/sitemaps/jobs.xml'),
+    sitemapTag('/sitemaps/skills.xml'),
   ]);
 }
 
@@ -66,6 +67,7 @@ export function generateStaticSitemap() {
     { loc: '/domains', changefreq: 'daily', priority: 0.8 },
     { loc: '/jobs', changefreq: 'daily', priority: 0.8 },
     { loc: '/hireme', changefreq: 'daily', priority: 0.8 },
+    { loc: '/skills', changefreq: 'daily', priority: 0.8 },
   ];
 
   return wrapUrlSet(
@@ -145,4 +147,27 @@ export async function generateJobsSitemap() {
   );
 
   return wrapUrlSet(items);
+}
+
+
+export async function generateSkillsSitemap() {
+  const rows = await runPgStatement({
+    query: `
+      SELECT name, slug
+      FROM skills
+      WHERE slug IS NOT NULL
+    `,
+  });
+
+  const items = rows.map((r) =>
+    urlTag({
+      loc: `/skill/${r.slug}`,
+      lastmod: today(),
+      changefreq: 'daily',
+      priority: 0.9,
+    })
+  );
+
+  return wrapUrlSet(items);
+
 }
