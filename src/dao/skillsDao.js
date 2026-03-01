@@ -11,7 +11,7 @@ export const skillsQ = {
     GROUP BY skill_name
     )
     SELECT
-    s.name,s.slug,
+    s.name as skill,s.slug,
     COALESCE(jsc.job_count, 0) AS job_count
     FROM skills s
     LEFT JOIN job_skill_counts jsc
