@@ -3,20 +3,53 @@ import PostgresDao from './dao.js';
 export const skillsQ = {
   GET_ALL_SKILLS: `
     WITH job_skill_counts AS (
-    SELECT
-        skill_elem->>'name' AS skill_name,
-        COUNT(*) AS job_count
-    FROM jobs
-    CROSS JOIN LATERAL jsonb_array_elements(jobs.skills) skill_elem
-    GROUP BY skill_name
-    )
-    SELECT
-    s.name as skill,s.slug,
+  SELECT
+    skill_elem->>'name' AS skill_name,
+    COUNT(*) AS job_count
+  FROM jobs
+  CROSS JOIN LATERAL jsonb_array_elements(jobs.skills) skill_elem
+  GROUP BY skill_name
+),
+
+skills_with_counts AS (
+  SELECT
+    s.name AS skill,
+    s.slug,
+    s.skill_group_name AS category,
+    s.skill_group_slug AS category_slug,
+    s.skill_group_type AS category_type,
     COALESCE(jsc.job_count, 0) AS job_count
-    FROM skills s
-    LEFT JOIN job_skill_counts jsc
+  FROM skills s
+  LEFT JOIN job_skill_counts jsc
     ON jsc.skill_name = s.name
-    ORDER BY job_count DESC;
+),
+
+category_agg AS (
+  SELECT
+    category,
+    COUNT(*) AS skill_count
+  FROM skills_with_counts
+  GROUP BY category
+),
+
+stats AS (
+  SELECT
+    (SELECT COUNT(*) FROM skills) AS total_skills,
+    (SELECT COUNT(*) FROM jobs) AS total_jobs,
+    (SELECT COUNT(DISTINCT skill_group_name) FROM skills) AS total_categories
+)
+
+SELECT json_build_object(
+  'stats', (SELECT row_to_json(stats) FROM stats),
+  'categories', (
+    SELECT json_agg(category_agg ORDER BY category)
+    FROM category_agg
+  ),
+  'skills', (
+    SELECT json_agg(skills_with_counts ORDER BY job_count DESC)
+    FROM skills_with_counts
+  )
+) AS result;
   `,
   GET_SKILL_BY_SLUG: `
     SELECT name, slug FROM skills where slug = $1 limit 1;
@@ -40,17 +73,21 @@ class SkillsDao extends PostgresDao {
   }
 
   async getAllSkills() {
-    return this.getQ({
-        sql: skillsQ.GET_ALL_SKILLS,
-        values: [],
-      });
+    const rows = await this.getQ({
+      sql: skillsQ.GET_ALL_SKILLS,
+      values: [],
+    });
+  
+    return rows[0]?.result;
   }
+
   async getSkillBySlug(slug) {
     return this.getQ({
       sql: skillsQ.GET_SKILL_BY_SLUG,
       values: [slug],
     });
   }
+
   async getJobsBySkill(skill_name, limit, offset, employment_type, employment_level, location) {
     return this.getQ({
       sql: skillsQ.GET_JOBS_BY_SKILL,
