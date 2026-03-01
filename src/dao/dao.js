@@ -21,7 +21,9 @@ export default class PostgresDao {
   }
 
   async getQ({ db = getPgPool(), sql, values = [], firstResultOnly = false }) {
+    console.log(sql, values);
     const result = await db.query(sql, values);
+    console.log(result.rows);
     return !firstResultOnly ? result.rows : result.rows.length > 0 ? result.rows[0] : null;
   }
 

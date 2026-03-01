@@ -2,6 +2,7 @@ import { defaultPgDao, runPgStatement } from '../dao/dao.js';
 import { filtersDao } from '../dao/filterDao.js';
 import { JOB_DOMAINS } from '../utils/constants.js';
 import { pickRelevantDescriptionSections } from '../utils/helper.js';
+import { skillsDao } from '../dao/skillsDao.js';
 
 export async function getDomainJobDetails(slug, page, employment_type, employment_level, location) {
   if (!slug) return null;
@@ -91,7 +92,70 @@ export async function getAllDomainJobs() {
   return jobsWithSlugs;
 }
 
+export async function getAllSkillsJobs(){
+  const allSkillsWithJobCount = await skillsDao.getAllSkills();
+  return allSkillsWithJobCount;
+}
 
-export async function getAllSkillGroupsJobs(){}
+export async function getSkillJobDetails(slug,
+  page,
+  employment_type,
+  employment_level, 
+  location){
+    if (!slug) return null;
+    const skill = await skillsDao.getSkillBySlug(slug);
+    if (!skill) return null;
 
-export async function getAllSkillsJobs(){}
+    const LIMIT = 20;
+    const OFFSET = (page - 1) * LIMIT;
+    const countRows = await runPgStatement({
+      query: `
+        SELECT COUNT(*)::int AS count
+        FROM jobs
+        CROSS JOIN LATERAL jsonb_array_elements(jobs.skills) AS skill_elem
+        WHERE skill_elem->>'name' = $1;
+      `,
+      values: [skill[0].name],
+    });
+    const total = countRows[0]?.count || 0;
+    const getJobsBySkill = await skillsDao.getJobsBySkill(
+      skill[0].name,
+      LIMIT,
+      OFFSET,
+      employment_type,
+      employment_level,
+      location,
+    );
+    const transformedJobs = await Promise.all(
+      getJobsBySkill.map(async (job) => {
+        let pickedSection = null;
+  
+        try {
+          const desc =
+            typeof job.description === 'string' ? JSON.parse(job.description) : job.description;
+  
+          pickedSection = await pickRelevantDescriptionSections(desc);
+        } catch (e) {
+          pickedSection = null;
+        }
+  
+        return {
+          ...job,
+          description: pickedSection ? [pickedSection] : [],
+        };
+      })
+    );
+    const totalPages = Math.ceil(total / LIMIT);
+    return {
+      skill: skill[0],
+      jobs: transformedJobs,
+      meta: {
+        page,
+        limit: LIMIT,
+        total,
+        total_pages: totalPages,
+      },
+    };
+}
+
+export async function getAllSkillGroupsJobs() {}

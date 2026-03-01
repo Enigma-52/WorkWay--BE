@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDomainJobDetails, getAllDomainJobs , getAllSkillsJobs , getAllSkillGroupsJobs } from '../services/filterService.js';
+import { getDomainJobDetails, getAllDomainJobs , getAllSkillsJobs , getAllSkillGroupsJobs , getSkillJobDetails} from '../services/filterService.js';
 
 const router = express.Router();
 
@@ -32,6 +32,11 @@ router.get('/skill_groups/all', async (req, res) => {
 });
 
 router.get('/skills/all', async (req, res) => {
+  const allSkillsJobs = await getAllSkillsJobs();
+  res.json(allSkillsJobs);
+});
+
+router.get('/skill', async (req, res) => {
   const {
     slug,
     page = 1,
@@ -39,14 +44,14 @@ router.get('/skills/all', async (req, res) => {
     employment_level = 'all',
     location = 'all',
   } = req.query;
-  const allSkillsJobs = await getAllSkillsJobs(
+  const skillJobs = await getSkillJobDetails(
     slug,
     page,
     employment_type,
     employment_level,
     location
   );
-  res.json(allSkillsJobs);
+  res.json(skillJobs);
 });
 
 export default router;
