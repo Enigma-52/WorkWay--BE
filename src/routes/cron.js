@@ -1,6 +1,7 @@
 import express from 'express';
 import { fetchGreenhouseJobs, insertGreenhouseCompanies , insertLeverCompanies , fetchLeverJobs} from '../services/cronService.js';
 import { backfillSkillsFromStoredDescriptions } from '../services/backfillService.js'
+import { insertGreenhouseJobsDaily } from "../services/dailyService.js";
 
 const router = express.Router();
 
@@ -27,6 +28,17 @@ router.get('/insert_lever_companies', async (req, res) => {
 
 router.get('/bf_skills', async (req, res) => {
   const result = await backfillSkillsFromStoredDescriptions();
+  res.json(result);
+});
+
+
+/// Daily ///
+
+
+
+router.get('/daily_greenhouse', async (req, res) => {
+  console.log('Cron job /insert_greenhouse triggered for daily');
+  const result = await insertGreenhouseJobsDaily();
   res.json(result);
 });
 

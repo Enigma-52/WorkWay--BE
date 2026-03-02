@@ -103,6 +103,8 @@ export const jobsQ = {
     ORDER BY j.created_at DESC
     LIMIT 3;
   `,
+  GET_JOBS_FOR_COMPANY_FROM_DB : `
+  SELECT job_id from jobs where company_id = $1;`
 };
 
 class JobsDao extends PostgresDao {
@@ -226,6 +228,14 @@ class JobsDao extends PostgresDao {
       employment_types: employment_types.filter((r) => r.employment_type != null),
       experience_levels: experience_levels.filter((r) => r.experience_level != null),
     };
+  }
+
+  async getJobsForCompanyFromDB(companyId) {
+    return this.getQ({
+      sql : jobsQ.GET_JOBS_FOR_COMPANY_FROM_DB,
+      values : [companyId]
+    }
+    )
   }
 }
 
