@@ -43,7 +43,12 @@ export function normalizeAndValidateListParams(query) {
   const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(query.limit, 10) || DEFAULT_LIMIT));
   const sort = SORT_VALUES.includes(query.sort) ? query.sort : 'recent';
 
-  const skillSlugRaw = typeof (query.skill ?? query.skill_slug) === 'string' ? String(query.skill ?? query.skill_slug).trim().toLowerCase() : '';
+  const skillSlugRaw =
+    typeof (query.skill ?? query.skill_slug) === 'string'
+      ? String(query.skill ?? query.skill_slug)
+          .trim()
+          .toLowerCase()
+      : '';
   const skill_slug = skillSlugRaw === '' ? null : skillSlugRaw;
 
   const domainRaw = typeof query.domain === 'string' ? query.domain.trim().toLowerCase() : 'all';
@@ -60,10 +65,13 @@ export function normalizeAndValidateListParams(query) {
     domainName = domainObj.name;
   }
 
-  const employmentTypeRaw = typeof query.employment_type === 'string' ? query.employment_type.trim() : 'all';
+  const employmentTypeRaw =
+    typeof query.employment_type === 'string' ? query.employment_type.trim() : 'all';
   let employmentType = null;
   if (employmentTypeRaw && employmentTypeRaw !== 'all') {
-    const matched = EMPLOYMENT_TYPES.find((v) => v.toLowerCase() === employmentTypeRaw.toLowerCase());
+    const matched = EMPLOYMENT_TYPES.find(
+      (v) => v.toLowerCase() === employmentTypeRaw.toLowerCase()
+    );
     if (!matched) {
       return {
         error: true,
@@ -74,10 +82,13 @@ export function normalizeAndValidateListParams(query) {
     employmentType = matched;
   }
 
-  const experienceLevelRaw = typeof query.experience_level === 'string' ? query.experience_level.trim() : 'all';
+  const experienceLevelRaw =
+    typeof query.experience_level === 'string' ? query.experience_level.trim() : 'all';
   let experienceLevel = null;
   if (experienceLevelRaw && experienceLevelRaw !== 'all') {
-    const matched = EXPERIENCE_LEVELS.find((v) => v.toLowerCase() === experienceLevelRaw.toLowerCase());
+    const matched = EXPERIENCE_LEVELS.find(
+      (v) => v.toLowerCase() === experienceLevelRaw.toLowerCase()
+    );
     if (!matched) {
       return {
         error: true,
@@ -109,8 +120,14 @@ export function normalizeAndValidateListParams(query) {
     applied_filters_for_response: {
       q: q || undefined,
       domain: domainRaw === 'all' || !domainRaw ? 'all' : domainRaw,
-      employment_type: employmentTypeRaw === 'all' || !employmentTypeRaw ? 'all' : (employmentType ?? employmentTypeRaw),
-      experience_level: experienceLevelRaw === 'all' || !experienceLevelRaw ? 'all' : (experienceLevel ?? experienceLevelRaw),
+      employment_type:
+        employmentTypeRaw === 'all' || !employmentTypeRaw
+          ? 'all'
+          : (employmentType ?? employmentTypeRaw),
+      experience_level:
+        experienceLevelRaw === 'all' || !experienceLevelRaw
+          ? 'all'
+          : (experienceLevel ?? experienceLevelRaw),
       location: location || undefined,
       company_slug: companySlug || undefined,
       skill: skill_slug ?? undefined,
@@ -124,7 +141,12 @@ export function normalizeAndValidateListParams(query) {
  */
 function domainNameToSlug(name) {
   const d = JOB_DOMAINS.find((x) => x.name === name);
-  return d ? d.slug : name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || '';
+  return d
+    ? d.slug
+    : name
+        ?.toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '') || '';
 }
 
 /**
@@ -197,7 +219,9 @@ export async function getJobList(params) {
 
   if (filters.skill_slug) {
     const skillInfo = getSkillBySlug(filters.skill_slug);
-    payload.skill = skillInfo ? { name: skillInfo.name, slug: skillInfo.slug } : { name: null, slug: filters.skill_slug };
+    payload.skill = skillInfo
+      ? { name: skillInfo.name, slug: skillInfo.slug }
+      : { name: null, slug: filters.skill_slug };
   }
 
   return payload;

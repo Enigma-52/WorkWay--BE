@@ -38,9 +38,9 @@ export async function insertGreenhouseJobsDaily() {
   const companies = await defaultPgDao.getAllRows({
     tableName: 'companies',
     where: "platform = 'greenhouse'",
-    offset: 62,
   });
-  console.log(companies.length);
+  const c = companies.length;
+  let t = 0;
   const jobs = [];
   for (const company of companies) {
     const getJobsForCompanyFromDB = await defaultPgDao.getAllRowsForChat({
@@ -52,9 +52,10 @@ export async function insertGreenhouseJobsDaily() {
     const result = await getJobs(company.namespace);
     const apiJobIds = result.jobs.map((job) => String(job.id));
     const missingJobIds = apiJobIds.filter((id) => !jobIdsFromDB.has(id));
+    t += 1;
     if (missingJobIds.length == 0) continue;
     await processMissingForCompany(missingJobIds, company);
-    console.log('Inserted ', missingJobIds.length, ' jobs for ', company.namespace);
+    console.log('Inserted ', missingJobIds.length, ' jobs for ', company.namespace, ' ', t, '/', c);
   }
   return { success: 'true' };
 }
