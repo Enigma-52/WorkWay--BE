@@ -30,11 +30,11 @@ app.get('/', (req, res) => {
 });
 
 // Start server
-const server = app.listen(PORT, async () => {
-  logger.info('Initializing PostgreSQL connection...');
+const server = app.listen(PORT, "0.0.0.0", async () => {
+  logger.info("Initializing PostgreSQL connection...");
   await initPg().catch((err) => logger.error(err));
-  logger.info('PostgreSQL initialized');
-  logger.info('Server started', { port: PORT });
+  logger.info("PostgreSQL initialized");
+  logger.info("Server started", { port: PORT });
 });
 
 // Graceful shutdown
