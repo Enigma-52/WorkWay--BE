@@ -5,6 +5,7 @@ import {
   getJobFilters,
   normalizeAndValidateListParams,
 } from '../services/jobService.js';
+import { recordJobView } from '../services/jobViewEventsService.js';
 
 const router = express.Router();
 
@@ -18,6 +19,56 @@ router.get('/details', async (req, res) => {
     res.status(500).json({
       error: 'Internal server error',
       message: err?.message ?? 'Failed to fetch job details',
+    });
+  }
+});
+
+router.post('/view', async (req, res) => {
+  try {
+    const body = req.body || {};
+
+    // Skip recording local development traffic (localhost views)
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : '';
+    const host = typeof req.headers.host === 'string' ? req.headers.host : '';
+    if (origin.includes('localhost') || host.includes('localhost')) {
+      return res.status(204).json({ skipped: true });
+    }
+
+    console.log("body", body);
+    const slug =
+      body.jobSlug ||
+      body.slug ||
+      body.job_slug ||
+      (typeof req.query.slug === 'string' ? req.query.slug : undefined);
+
+    const viewerCountry =
+      body.viewer_country || body.viewerCountry || body.country || null;
+    const viewerCity =
+      body.viewer_city || body.viewerCity || body.city || null;
+    const sourcePage =
+      body.source_page || body.sourcePage || body.source || 'job';
+    const userAgent = req.headers['user-agent'] || null;
+
+    const event = await recordJobView({
+      slug,
+      viewerCountry,
+      viewerCity,
+      sourcePage,
+      userAgent,
+    });
+
+    res.status(201).json({
+      success: true,
+      event,
+    });
+  } catch (err) {
+    console.error('POST /api/job/view error:', err);
+    const status = err?.statusCode && Number.isInteger(err.statusCode)
+      ? err.statusCode
+      : 500;
+    res.status(status).json({
+      error: 'Internal server error',
+      message: err?.message ?? 'Failed to record job view',
     });
   }
 });

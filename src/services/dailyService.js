@@ -252,7 +252,7 @@ export async function processMissingForCompany(missingJobIds, company) {
       returningCol: 'id',
     });
   } catch (error) {
-    console.log('oopsie');
+    console.log(error);
   }
 }
 
