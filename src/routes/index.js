@@ -9,6 +9,7 @@ import filterPagesRoutes from './filter.js';
 import aiRoutes from './ai.js';
 import chatRoutes from './chat.js';
 import syncRoutes from './sync.js'
+import feedbackRoutes from './feedback.js';
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.use('/filter', filterPagesRoutes);
 router.use('/ai', aiRoutes);
 router.use('/chat', chatRoutes);
 router.use('/sync', syncRoutes);
+router.use('/feedback', feedbackRoutes);
 
 
 router.use('/', sitemapRoutes); // backward compatibility
