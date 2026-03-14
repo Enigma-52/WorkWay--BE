@@ -12,7 +12,7 @@ const client = new OpenAI({
 });
 
 // ---- tunables (safe defaults) ----
-const CONCURRENCY = 5; // adjust based on OpenRouter limits + DB capacity
+const CONCURRENCY = 50; // adjust based on OpenRouter limits + DB capacity
 
 const SYSTEM_MESSAGE = {
   role: 'system',

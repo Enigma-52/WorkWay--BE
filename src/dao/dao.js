@@ -141,10 +141,7 @@ export default class PostgresDao {
       flatValues.push(...row);
     });
 
-    let sql = `INSERT INTO ${tableName} (${columnNames.join(', ')}) VALUES ${valueStrings.join(
-      ', '
-    )}`;
-    sql += ` ON CONFLICT (${conflictColumns.join(', ')}) DO UPDATE SET `;
+    let sql = `INSERT INTO ${tableName} (${columnNames.join(', ')}) VALUES ${valueStrings.join(', ')}`;
 
     // Build update clause
     const updateClauses = updateColumnNames.map((col) => `${col} = EXCLUDED.${col}`);
@@ -154,7 +151,13 @@ export default class PostgresDao {
       updateClauses.push('updated_at = CURRENT_TIMESTAMP');
     }
 
-    sql += updateClauses.join(', ');
+    if (updateClauses.length === 0) {
+      sql += ` ON CONFLICT (${conflictColumns.join(', ')}) DO NOTHING`;
+    } else {
+      sql += ` ON CONFLICT (${conflictColumns.join(', ')}) DO UPDATE SET `;
+      sql += updateClauses.join(', ');
+    }
+
     sql += ` RETURNING ${returningCol}`;
 
     try {
@@ -165,15 +168,21 @@ export default class PostgresDao {
         const updateClausesWithoutTimestamp = updateColumnNames.map(
           (col) => `${col} = EXCLUDED.${col}`
         );
-        let retrySQL = `INSERT INTO ${tableName} (${columnNames.join(
-          ', '
-        )}) VALUES ${valueStrings.join(', ')}`;
-        retrySQL += ` ON CONFLICT (${conflictColumns.join(', ')}) DO UPDATE SET `;
-        retrySQL += updateClausesWithoutTimestamp.join(', ');
+
+        let retrySQL = `INSERT INTO ${tableName} (${columnNames.join(', ')}) VALUES ${valueStrings.join(', ')}`;
+
+        if (updateClausesWithoutTimestamp.length === 0) {
+          retrySQL += ` ON CONFLICT (${conflictColumns.join(', ')}) DO NOTHING`;
+        } else {
+          retrySQL += ` ON CONFLICT (${conflictColumns.join(', ')}) DO UPDATE SET `;
+          retrySQL += updateClausesWithoutTimestamp.join(', ');
+        }
+
         retrySQL += ` RETURNING ${returningCol}`;
 
         return await db.query(retrySQL, flatValues);
       }
+
       throw error;
     }
   }

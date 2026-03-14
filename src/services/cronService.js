@@ -166,7 +166,10 @@ export async function insertGreenhouseCompanies() {
   const companyPromises = uniqueCompanies.map(async (company) => {
     try {
       const response = await fetch(`${baseGreenhouseUrl}${company.toLowerCase()}`);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok){
+        console.log("[GH-COMPANIES]   Skipped - Failed check");
+        return null;
+      }
       const result = await response.json();
       const companyName = result.name;
       const companyDescription = result.description || 'No description available';
@@ -235,7 +238,7 @@ export async function insertCompaniesToDb(companies) {
       'namespace',
     ],
     multiRowsColValuesList,
-    updateColumnNames: ['description', 'logo_url', 'location', 'website', 'platform', 'namespace'],
+    updateColumnNames: [],
     conflictColumns: ['slug'],
     returningCol: 'id',
   });

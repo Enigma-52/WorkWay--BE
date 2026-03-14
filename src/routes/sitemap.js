@@ -5,7 +5,9 @@ import {
   generateCompaniesSitemap,
   generateDomainsSitemap,
   generateJobsSitemap,
-  generateSkillsSitemap
+  generateSkillsSitemap,
+  generateJobsSitemapIndex,
+  generateJobsSitemapPage
 } from '../services/sitemapService.js';
 
 const router = express.Router();
@@ -38,13 +40,26 @@ router.get('/sitemaps/domains.xml', async (req, res) => {
   res.status(200).send(xml);
 });
 
-/* Jobs */
+/* Jobs Sitemap Index*/
 router.get('/sitemaps/jobs.xml', async (req, res) => {
-  const xml = await generateJobsSitemap();
+  const xml = await generateJobsSitemapIndex();
   res.setHeader('Content-Type', 'application/xml');
   res.status(200).send(xml);
 });
 
+/* Individual job sitemap pages */
+router.get('/sitemaps/jobs-:page.xml', async (req, res) => {
+  const page = parseInt(req.params.page, 10);
+
+  if (!page || page < 1) {
+    return res.status(400).send('Invalid sitemap page');
+  }
+
+  const xml = await generateJobsSitemapPage(page);
+
+  res.setHeader('Content-Type', 'application/xml');
+  res.status(200).send(xml);
+});
 router.get('/sitemaps/skills.xml', async (req, res) => {
   const xml = await generateSkillsSitemap();
   res.setHeader('Content-Type', 'application/xml');

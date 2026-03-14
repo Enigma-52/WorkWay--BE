@@ -38,6 +38,7 @@ export async function insertGreenhouseJobsDaily() {
   const companies = await defaultPgDao.getAllRows({
     tableName: 'companies',
     where: "platform = 'greenhouse'",
+    orderBy : 'id ASC',
   });
   const c = companies.length;
   let t = 0;
@@ -158,7 +159,7 @@ export async function insertGreenhouseJobsDaily() {
 export async function processMissingForCompany(missingJobIds, company) {
   if (!missingJobIds.length) return;
 
-  const concurrency = 3; // safe small boost
+  const concurrency = 5; // safe small boost
 
   const jobsToInsert = await mapWithConcurrency(missingJobIds, concurrency, async (jobId) => {
     const jobUrl = `${baseGreenhouseUrl}${company.namespace.toLowerCase()}/jobs/${jobId}`;
