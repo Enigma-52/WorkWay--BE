@@ -68,6 +68,13 @@ export function generateStaticSitemap() {
     { loc: '/jobs', changefreq: 'daily', priority: 0.8 },
     { loc: '/hireme', changefreq: 'daily', priority: 0.8 },
     { loc: '/skills', changefreq: 'daily', priority: 0.8 },
+    { loc: '/changelog', changefreq: 'daily', priority: 0.8 },
+    { loc: '/feedback', changefreq: 'daily', priority: 0.8 },
+    { loc: '/contact', changefreq: 'daily', priority: 0.8 },
+    { loc: '/privacy-policy', changefreq: 'daily', priority: 0.8 },
+    { loc: '/terms', changefreq: 'daily', priority: 0.8 },
+    { loc: '/disclaimer', changefreq: 'daily', priority: 0.8 },
+
   ];
 
   return wrapUrlSet(
