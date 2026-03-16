@@ -62,7 +62,7 @@ class JobViewEventsDao extends PostgresDao {
         jobSlug,
         jobTitle,
         company,
-        viewerCountry ?? 'Unknown',
+        viewerCountry ?? null,
         viewerCity ?? null,
         sourcePage ?? 'job',
         userAgent ?? null,

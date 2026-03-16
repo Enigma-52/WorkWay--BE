@@ -23,6 +23,11 @@ export async function recordJobView({
 
   const job = jobs[0];
 
+  const isUnknown = (v) => !v || v.trim().toLowerCase() === 'unknown';
+  if (isUnknown(viewerCountry) && isUnknown(viewerCity)) {
+    return null;
+  }
+
   const event = await jobViewEventsDao.insertEvent({
     jobId: job.id,
     jobSlug: job.slug,
