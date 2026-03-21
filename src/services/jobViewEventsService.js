@@ -28,6 +28,10 @@ export async function recordJobView({
     return null;
   }
 
+  if (viewerCountry && viewerCountry.trim().toLowerCase() === 'singapore') {
+    return null;
+  }
+
   const event = await jobViewEventsDao.insertEvent({
     jobId: job.id,
     jobSlug: job.slug,
