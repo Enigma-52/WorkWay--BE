@@ -7,7 +7,8 @@ import {
   generateJobsSitemap,
   generateSkillsSitemap,
   generateJobsSitemapIndex,
-  generateJobsSitemapPage
+  generateJobsSitemapPage,
+  generateLocationSeoSitemap,
 } from '../services/sitemapService.js';
 
 const router = express.Router();
@@ -62,6 +63,13 @@ router.get('/sitemaps/jobs-:page.xml', async (req, res) => {
 });
 router.get('/sitemaps/skills.xml', async (req, res) => {
   const xml = await generateSkillsSitemap();
+  res.setHeader('Content-Type', 'application/xml');
+  res.status(200).send(xml);
+});
+
+/* Location SEO pages */
+router.get('/sitemaps/location-seo.xml', async (req, res) => {
+  const xml = await generateLocationSeoSitemap();
   res.setHeader('Content-Type', 'application/xml');
   res.status(200).send(xml);
 });

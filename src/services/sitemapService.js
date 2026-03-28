@@ -1,6 +1,27 @@
 import { runPgStatement } from '../dao/dao.js'; // adjust path
 import { JOB_DOMAINS } from '../utils/constants.js';
 
+// NOTE: These lists mirror workway-next/src/data/locationSeoData.ts
+// Keep in sync when adding new roles or locations.
+const SEO_ROLES = [
+  "software-engineer", "frontend-engineer", "backend-engineer",
+  "full-stack-engineer", "product-manager", "data-scientist",
+  "devops-engineer", "machine-learning-engineer", "ui-ux-designer",
+  "data-analyst", "ios-engineer", "android-engineer", "qa-engineer",
+  "site-reliability-engineer", "engineering-manager", "product-designer",
+  "business-analyst", "marketing-manager", "customer-success-manager",
+  "technical-writer", "hr-manager", "finance-analyst",
+  "operations-manager", "legal-counsel", "sales-engineer",
+];
+
+const SEO_LOCATIONS = [
+  "bangalore", "remote", "san-francisco", "new-york", "london",
+  "hyderabad", "mumbai", "delhi", "seattle", "austin",
+  "singapore", "berlin", "toronto", "dubai", "pune",
+  "chennai", "boston", "los-angeles", "chicago", "amsterdam",
+  "paris", "sydney", "tokyo", "dublin", "bengaluru",
+];
+
 const BASE_URL = 'https://www.workway.dev';
 
 function today() {
@@ -50,6 +71,7 @@ export function generateSitemapIndex() {
     sitemapTag('/sitemaps/domains.xml'),
     sitemapTag('/sitemaps/jobs.xml'),
     sitemapTag('/sitemaps/skills.xml'),
+    sitemapTag('/sitemaps/location-seo.xml'),
   ]);
 }
 
@@ -74,7 +96,7 @@ export function generateStaticSitemap() {
     { loc: '/privacy-policy', changefreq: 'daily', priority: 0.8 },
     { loc: '/terms', changefreq: 'daily', priority: 0.8 },
     { loc: '/disclaimer', changefreq: 'daily', priority: 0.8 },
-
+    { loc: '/location-jobs', changefreq: 'weekly', priority: 0.9 },
   ];
 
   return wrapUrlSet(
@@ -126,6 +148,43 @@ export async function generateDomainsSitemap() {
       changefreq: 'daily',
       priority: 0.8,
     })
+  );
+
+  return wrapUrlSet(items);
+}
+
+/* =========================
+   LOCATION SEO PAGES
+========================= */
+
+export async function generateLocationSeoSitemap() {
+  const d = today();
+
+  const rows = await runPgStatement({
+    query: `
+      SELECT r.role_slug, l.location_slug
+      FROM unnest($1::text[]) AS r(role_slug)
+      CROSS JOIN unnest($2::text[]) AS l(location_slug)
+      JOIN jobs j
+        ON LOWER(j.title)    LIKE '%' || REPLACE(r.role_slug,    '-', ' ') || '%'
+       AND LOWER(j.location) LIKE '%' || REPLACE(l.location_slug, '-', ' ') || '%'
+      GROUP BY r.role_slug, l.location_slug
+      HAVING COUNT(j.id) > 1
+    `,
+    values: [SEO_ROLES, SEO_LOCATIONS],
+  }).catch(() => []);
+
+  // Fallback to all combos if DB is unreachable
+  const validCombos = new Set(rows.map((r) => `${r.role_slug}|${r.location_slug}`));
+  const source = validCombos.size > 0
+    ? SEO_ROLES.flatMap((role) =>
+        SEO_LOCATIONS.filter((loc) => validCombos.has(`${role}|${loc}`))
+          .map((loc) => ({ role, loc }))
+      )
+    : SEO_ROLES.flatMap((role) => SEO_LOCATIONS.map((loc) => ({ role, loc })));
+
+  const items = source.map(({ role, loc }) =>
+    urlTag({ loc: `/${role}-jobs-in-${loc}`, lastmod: d, changefreq: 'weekly', priority: 0.7 })
   );
 
   return wrapUrlSet(items);
