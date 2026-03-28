@@ -20,6 +20,8 @@ const MARK_USED_SQL = `
   WHERE id = $1
 `;
 
+const DELETE_BY_ID_SQL = `DELETE FROM magic_links WHERE id = $1`;
+
 class MagicLinksDao extends PostgresDao {
   constructor() {
     super('magic_links');
@@ -46,6 +48,10 @@ class MagicLinksDao extends PostgresDao {
       sql: MARK_USED_SQL,
       values: [id],
     });
+  }
+
+  async deleteById(id) {
+    return this.updateQ({ sql: DELETE_BY_ID_SQL, values: [id] });
   }
 }
 

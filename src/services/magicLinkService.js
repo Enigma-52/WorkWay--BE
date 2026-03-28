@@ -18,13 +18,13 @@ export async function sendMagicLink({ email, ipAddress, userAgent }) {
   const { raw, hash } = generateToken();
   const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
 
-  await magicLinksDao.insert({ email, tokenHash: hash, expiresAt, ipAddress, userAgent });
+  const insertedRow = await magicLinksDao.insert({ email, tokenHash: hash, expiresAt, ipAddress, userAgent });
 
   const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:3001';
   const link = `${frontendOrigin}/auth/verify?token=${raw}`;
 
   const { error } = await resend.emails.send({
-    from: 'noreply@workway.dev',
+    from: process.env.RESEND_FROM_EMAIL || 'noreply@workway.dev',
     to: email,
     subject: 'Your WorkWay sign-in link',
     html: `
@@ -36,6 +36,7 @@ export async function sendMagicLink({ email, ipAddress, userAgent }) {
 
   if (error) {
     logger.error('Resend email failed', { error, email });
+    await magicLinksDao.deleteById(insertedRow.id);
     throw new Error('Failed to send magic link email');
   }
 
@@ -60,14 +61,20 @@ export async function verifyMagicLink({ token }) {
 
   await magicLinksDao.markUsed(row.id);
 
+  const existingUser = await usersDao.getByEmail(row.email);
+
   const user = await usersDao.upsertUser({
     email: row.email,
     emailVerified: true,
-    displayName: row.email.split('@')[0],
-    firstName: null,
-    lastName: null,
-    avatarUrl: null,
+    displayName: existingUser ? existingUser.display_name : row.email.split('@')[0],
+    firstName: existingUser ? existingUser.first_name : null,
+    lastName: existingUser ? existingUser.last_name : null,
+    avatarUrl: existingUser ? existingUser.avatar_url : null,
   });
+
+  if (!user) {
+    throw new Error('Failed to create or retrieve user');
+  }
 
   logger.info('Magic link verified', { email: row.email, userId: user.id });
   return { success: true, user };
