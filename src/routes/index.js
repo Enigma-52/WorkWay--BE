@@ -11,6 +11,7 @@ import chatRoutes from './chat.js';
 import syncRoutes from './sync.js'
 import feedbackRoutes from './feedback.js';
 import authRoutes from './auth.js';
+import seoRoutes from './seo.js';
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ router.use('/feedback', feedbackRoutes);
 router.use('/auth', authRoutes);
 
 
+router.use('/seo', seoRoutes);
 router.use('/', sitemapRoutes); // backward compatibility
 
 export default router;
