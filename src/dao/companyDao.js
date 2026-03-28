@@ -141,7 +141,7 @@ class CompanyDao extends PostgresDao {
   }
 
   async getOverview() {
-    const TRENDING_COMPANY_IDS = [1, 3, 5, 203, 177];
+    const TRENDING_COMPANY_IDS = [118 , 1170 , 349 , 286 , 212 , 282  , 341 , 607 , 287];
 
     const [stats, trending, recent, hiring] = await Promise.all([
       this.getQ({ sql: companyQ.OVERVIEW_STATS, values: [] }),

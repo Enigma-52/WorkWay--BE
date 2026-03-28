@@ -37,6 +37,17 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/search', async (req, res) => {
+  try {
+    const { q = '' } = req.query;
+    const result = await getAllCompanies({ q, page: 1, limit: 10, letter: 'ALL', hiring: false });
+    res.json(result.companies);
+  } catch (err) {
+    console.error('GET /api/company/search failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/overview', async (req, res) => {
   try {
     const data = await getCompanyOverview();
