@@ -12,6 +12,7 @@ const SEO_ROLES = [
   "business-analyst", "marketing-manager", "customer-success-manager",
   "technical-writer", "hr-manager", "finance-analyst",
   "operations-manager", "legal-counsel", "sales-engineer",
+  "ai-engineer","account-executive","data-engineer"
 ];
 
 const SEO_LOCATIONS = [
@@ -20,6 +21,13 @@ const SEO_LOCATIONS = [
   "singapore", "berlin", "toronto", "dubai", "pune",
   "chennai", "boston", "los-angeles", "chicago", "amsterdam",
   "paris", "sydney", "tokyo", "dublin", "bengaluru",
+  "washington-dc","san-jose","denver","atlanta","dallas",
+  "phoenix","vancouver","barcelona","madrid","seoul",
+  "hong-kong","tel-aviv","san-diego","houston","philadelphia",
+  "raleigh","charlotte","pittsburgh","salt-lake-city","gurgaon",
+  "noida","stockholm","warsaw","lisbon","copenhagen","bangkok","taipei","manila",
+  "cape-town","united-states", "united-kingdom","canada","germany",
+  "brazil","mexico","remote-us","remote-india","remote-europe",
 ];
 
 const BASE_URL = 'https://www.workway.dev';
@@ -157,9 +165,7 @@ export async function generateDomainsSitemap() {
    LOCATION SEO PAGES
 ========================= */
 
-export async function generateLocationSeoSitemap() {
-  const d = today();
-
+export async function getValidLocationCombos() {
   const rows = await runPgStatement({
     query: `
       SELECT r.role_slug, l.location_slug
@@ -169,12 +175,19 @@ export async function generateLocationSeoSitemap() {
         ON LOWER(j.title)    LIKE '%' || REPLACE(r.role_slug,    '-', ' ') || '%'
        AND LOWER(j.location) LIKE '%' || REPLACE(l.location_slug, '-', ' ') || '%'
       GROUP BY r.role_slug, l.location_slug
-      HAVING COUNT(j.id) > 1
+      HAVING COUNT(j.id) > 5
     `,
     values: [SEO_ROLES, SEO_LOCATIONS],
   }).catch(() => []);
 
-  // Fallback to all combos if DB is unreachable
+  return rows; // [{ role_slug, location_slug }]
+}
+
+export async function generateLocationSeoSitemap() {
+  const d = today();
+
+  const rows = await getValidLocationCombos();
+
   const validCombos = new Set(rows.map((r) => `${r.role_slug}|${r.location_slug}`));
   const source = validCombos.size > 0
     ? SEO_ROLES.flatMap((role) =>
@@ -184,7 +197,7 @@ export async function generateLocationSeoSitemap() {
     : SEO_ROLES.flatMap((role) => SEO_LOCATIONS.map((loc) => ({ role, loc })));
 
   const items = source.map(({ role, loc }) =>
-    urlTag({ loc: `/${role}-jobs-in-${loc}`, lastmod: d, changefreq: 'weekly', priority: 0.7 })
+    urlTag({ loc: `/${role}-jobs-in-${loc}`, lastmod: d, changefreq: 'weekly', priority: 0.8 })
   );
 
   return wrapUrlSet(items);
