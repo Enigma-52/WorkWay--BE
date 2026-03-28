@@ -2,21 +2,14 @@ import dns from 'dns';
 dns.setDefaultResultOrder('ipv4first');
 
 import express from 'express';
+import session from 'express-session';
+import passport from 'passport';
 import { logger } from './utils/logger.js';
 import { initPg } from './utils/initializers/postgres.js';
 import { config } from './config.js';
 import routes from './routes/index.js';
 import { runPgStatement } from './dao/dao.js';
-
-export async function verifyConnection() {
-  const res = await runPgStatement({
-    query: `
-    SELECT count(*) FROM jobs
-    `,
-  });
-
-  logger.info('Postgres connection info', res[0]);
-}
+import { initGoogleAuth } from './services/authService.js';
 
 
 const app = express();
@@ -24,6 +17,15 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-secret',
+  resave: false,
+  saveUninitialized: false,
+}));
+
+initGoogleAuth();
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Basic CORS to allow frontend on different origin (e.g. Next.js dev server)
 app.use((req, res, next) => {
@@ -69,7 +71,6 @@ app.get('/', (req, res) => {
 const server = app.listen(PORT, "0.0.0.0", async () => {
   logger.info("Initializing PostgreSQL connection...");
   await initPg().catch((err) => logger.error(err));
-  await verifyConnection();
 
   logger.info("PostgreSQL initialized");
   logger.info("Server started", { port: PORT });

@@ -10,6 +10,7 @@ import aiRoutes from './ai.js';
 import chatRoutes from './chat.js';
 import syncRoutes from './sync.js'
 import feedbackRoutes from './feedback.js';
+import authRoutes from './auth.js';
 
 const router = express.Router();
 
@@ -22,6 +23,7 @@ router.use('/ai', aiRoutes);
 router.use('/chat', chatRoutes);
 router.use('/sync', syncRoutes);
 router.use('/feedback', feedbackRoutes);
+router.use('/auth', authRoutes);
 
 
 router.use('/', sitemapRoutes); // backward compatibility
