@@ -28,19 +28,21 @@ router.get('/failure', (req, res) => {
 router.post('/magic-link/send', async (req, res) => {
   const { email } = req.body;
 
-  if (!email || typeof email !== 'string' || !email.includes('@')) {
+  if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ success: false, message: 'A valid email is required' });
   }
 
+  const normalizedEmail = email.toLowerCase().trim();
+
   try {
     await sendMagicLink({
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
     });
     res.json({ success: true, message: 'Magic link sent — check your email' });
   } catch (err) {
-    logger.error('Magic link send failed', { error: err.message, email });
+    logger.error('Magic link send failed', { error: err.message, email: normalizedEmail });
     res.status(500).json({ success: false, message: 'Failed to send magic link' });
   }
 });
