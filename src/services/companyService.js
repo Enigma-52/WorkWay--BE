@@ -10,9 +10,11 @@ export async function getCompanyDetails(slug) {
     });
     const companyId = companyDetails ? companyDetails.id : null;
     const jobDetails = await jobsDao.getCompanyJobFeed({ companyId });
+    const recentlyPostedJobs = await jobsDao.getCompanyRecentlyPostedJobs({ companyId });
     const enrichedCompanyDetails = {
       ...companyDetails,
       jobListings: jobDetails,
+      recentlyPostedJobs: recentlyPostedJobs
     };
     return enrichedCompanyDetails;
   } catch (error) {

@@ -104,7 +104,14 @@ export const jobsQ = {
     LIMIT 3;
   `,
   GET_JOBS_FOR_COMPANY_FROM_DB : `
-  SELECT job_id from jobs where company_id = $1;`
+  SELECT job_id from jobs where company_id = $1;`,
+  GET_RECENT_JOBS_FOR_COMPANY_FROM_DB : `
+    SELECT ${JOB_FEED_COLS}
+    FROM jobs j
+    WHERE j.company_id = $1
+    AND created_at >= NOW() - INTERVAL '14 days'
+    ORDER BY created_at DESC;
+  `
 };
 
 class JobsDao extends PostgresDao {
@@ -235,6 +242,14 @@ class JobsDao extends PostgresDao {
       sql : jobsQ.GET_JOBS_FOR_COMPANY_FROM_DB,
       values : [companyId]
     }
+    )
+  }
+  
+  async getCompanyRecentlyPostedJobs({companyId}){
+    return this.getQ({
+        sql : jobsQ.GET_RECENT_JOBS_FOR_COMPANY_FROM_DB,
+        values : [companyId]
+      }
     )
   }
 }
