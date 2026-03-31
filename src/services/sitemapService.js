@@ -105,6 +105,20 @@ export function generateStaticSitemap() {
     { loc: '/terms', changefreq: 'daily', priority: 0.8 },
     { loc: '/disclaimer', changefreq: 'daily', priority: 0.8 },
     { loc: '/location-jobs', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides', changefreq: 'weekly', priority: 0.9 },
+
+    // Guides
+
+    { loc: '/guides/workway-vs-greenhouse-job-boards', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-lever-career-pages', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-ashby-job-tracking', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-multiple-ats-tabs', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-greenhouse-lever-ashby-separately', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-multiple-ats-platforms', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-spreadsheet-job-tracking', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-manual-job-search', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-bookmarking-job-links', changefreq: 'weekly', priority: 0.9 },
+
   ];
 
   return wrapUrlSet(
