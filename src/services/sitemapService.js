@@ -118,6 +118,13 @@ export function generateStaticSitemap() {
     { loc: '/guides/workway-vs-spreadsheet-job-tracking', changefreq: 'weekly', priority: 0.9 },
     { loc: '/guides/workway-vs-manual-job-search', changefreq: 'weekly', priority: 0.9 },
     { loc: '/guides/workway-vs-bookmarking-job-links', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-notion-job-tracker', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-airtable-job-tracking', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-job-alert-emails', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-google-alerts-job-search', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-linkedin-jobs', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-wellfound-startup-jobs', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/guides/workway-vs-hacker-news-hiring-threads', changefreq: 'weekly', priority: 0.9 },
 
   ];
 
