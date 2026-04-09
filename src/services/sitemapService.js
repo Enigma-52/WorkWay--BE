@@ -53,11 +53,13 @@ ${items.join('')}
 </urlset>`;
 }
 
-function sitemapTag(path) {
+function sitemapTag(path, { changefreq = 'weekly', priority = 0.8 } = {}) {
   return `
   <sitemap>
     <loc>${BASE_URL}${path}</loc>
     <lastmod>${today()}</lastmod>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
   </sitemap>`;
 }
 
@@ -80,6 +82,7 @@ export function generateSitemapIndex() {
     sitemapTag('/sitemaps/jobs.xml'),
     sitemapTag('/sitemaps/skills.xml'),
     sitemapTag('/sitemaps/location-seo.xml'),
+    sitemapTag('/sitemaps/location-only.xml'),
   ]);
 }
 
@@ -105,6 +108,7 @@ export function generateStaticSitemap() {
     { loc: '/terms', changefreq: 'daily', priority: 0.8 },
     { loc: '/disclaimer', changefreq: 'daily', priority: 0.8 },
     { loc: '/location-jobs', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/jobs-by-location', changefreq: 'weekly', priority: 0.9 },
     { loc: '/guides', changefreq: 'weekly', priority: 0.9 },
 
     // Guides
@@ -219,6 +223,43 @@ export async function generateLocationSeoSitemap() {
 
   const items = source.map(({ role, loc }) =>
     urlTag({ loc: `/${role}-jobs-in-${loc}`, lastmod: d, changefreq: 'weekly', priority: 0.8 })
+  );
+
+  return wrapUrlSet(items);
+}
+
+/* =========================
+   LOCATION-ONLY SEO PAGES
+========================= */
+
+export async function getValidLocations() {
+  const rows = await runPgStatement({
+    query: `
+      SELECT l.location_slug
+      FROM unnest($1::text[]) AS l(location_slug)
+      JOIN jobs j
+        ON LOWER(j.location) LIKE '%' || REPLACE(l.location_slug, '-', ' ') || '%'
+      GROUP BY l.location_slug
+      HAVING COUNT(j.id) > 5
+    `,
+    values: [SEO_LOCATIONS],
+  }).catch(() => []);
+
+  return rows; // [{ location_slug }]
+}
+
+export async function generateLocationOnlySitemap() {
+  const d = today();
+
+  const rows = await getValidLocations();
+
+  const validLocations = new Set(rows.map((r) => r.location_slug));
+  const source = validLocations.size > 0
+    ? SEO_LOCATIONS.filter((loc) => validLocations.has(loc))
+    : SEO_LOCATIONS; // fallback: show all if query fails
+
+  const items = source.map((loc) =>
+    urlTag({ loc: `/jobs-in-${loc}`, lastmod: d, changefreq: 'weekly', priority: 0.8 })
   );
 
   return wrapUrlSet(items);
