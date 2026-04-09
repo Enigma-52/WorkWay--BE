@@ -257,7 +257,7 @@ export async function processMissingForCompany(missingJobIds, company) {
   }
 }
 
-async function mapWithConcurrency(items, limit, asyncFn) {
+export async function mapWithConcurrency(items, limit, asyncFn) {
   const results = [];
   let index = 0;
 

@@ -1,5 +1,6 @@
 import { greenhouseCompanies } from '../data/greenhouseCompanies.js';
 import { leverCompanies } from '../data/leverCompanies.js';
+import { ashbyCompanies } from '../data/ashbyCompanies.js';
 import { matchSkillsInText } from '../data/skills.js';
 import {
   parseGreenhouseJobDescription,
@@ -10,6 +11,9 @@ import {
   uuidToBase62
 } from '../utils/helper.js';
 import { defaultPgDao } from '../dao/dao.js';
+import { ASHBY_ALL_COMPANY_JOBS_API_URL , ASHBY_HEADERS , ASHBY_ALL_COMPANY_JOBS_QUERY , ASHBY_SINGLE_JOB_URL , ASHBY_SINGLE_JOB_QUERY} from '../utils/constants.js';
+import { mapWithConcurrency } from './dailyService.js';
+import { fetchWithRetry } from '../utils/apiClient.js';
 
 const baseGreenhouseUrl = 'https://boards-api.greenhouse.io/v1/boards/';
 
@@ -403,4 +407,249 @@ export async function insertLeverJobs(jobsArray)
     conflictColumns: ['slug'],
     returningCol: 'id',
   });
+}
+
+export async function insertAshbyCompanies() {
+  const uniqueCompanies = [...new Set(ashbyCompanies)];
+  const companyPromises = uniqueCompanies.map(async (company) => {
+    try {
+      const companyName = company;
+      const companyDescription = 'No description available';
+
+      const dbRow = {
+        name: companyName,
+        description: companyDescription,
+        slug: companyName.toLowerCase().replace(/\s+/g, '-'),
+        logo_url: `https://img.logo.dev/${company.toLowerCase()}.com?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
+        location: JSON.stringify({}),
+        website: null,
+        platform: 'ashby',
+        namespace: company.toLowerCase(),
+      };
+      return dbRow;
+    } catch (error) {
+      console.error(`Failed to fetch company ${company}:`, error);
+      return null;
+    }
+  });
+
+  const results = await Promise.all(companyPromises);
+  const companies = results.filter((c) => c !== null);
+
+  // DEDUPE BY SLUG (THIS IS THE IMPORTANT PART)
+  const bySlug = new Map();
+
+  for (const c of companies) {
+    if (!bySlug.has(c.slug)) {
+      bySlug.set(c.slug, c);
+    } else {
+      console.log('Duplicate slug detected, dropping:', c.slug);
+    }
+  }
+
+  const dedupedCompanies = Array.from(bySlug.values());
+
+  await insertCompaniesToDb(dedupedCompanies);
+
+  return { message: 'Inserted ashby companies successfully', count: companies.length };
+
+}
+
+export async function fetchAshbyJobs() {
+  // Placeholder for Ashby job fetching logic
+  const companies = await defaultPgDao.getAllRows({
+    tableName: 'companies',
+    where: "platform = 'ashby' and name = 'OpenAI'",
+    orderBy : 'id ASC',
+  });
+  const c = companies.length;
+  let t = 0;
+  const jobs = [];
+  for (const company of companies) {
+    const getJobsForCompanyFromDB = await defaultPgDao.getAllRowsForChat({
+      tableName: 'jobs',
+      columns: ['job_id'],
+      where: `company_id = ${company.id}`,
+    });
+    const jobIdsFromDB = new Set(getJobsForCompanyFromDB.map((row) => row.job_id));
+    const result = await getAshbyJobs(company.namespace);
+    const apiJobIds = result.map((job) => String(job.id));
+    const missingJobIds = apiJobIds.filter((id) => !jobIdsFromDB.has(id));
+    t += 1;
+    if (missingJobIds.length == 0) continue;
+    console.log(missingJobIds.length);
+    const testingJobId = missingJobIds[0];
+    await processMissingJobsForCompanyAshby([testingJobId], company);
+    console.log('Inserted ', missingJobIds.length, ' jobs for ', company.namespace, ' ', t, '/', c);
+  }
+  return { success: 'true' };
+}
+
+export async function getAshbyJobs(company) {
+try {
+  const response = await fetch(ASHBY_ALL_COMPANY_JOBS_API_URL, {
+      method: "POST",
+      headers: ASHBY_HEADERS,
+      body: JSON.stringify({
+        operationName: "ApiJobBoardWithTeams",
+        query: ASHBY_ALL_COMPANY_JOBS_QUERY,
+        variables: {
+          organizationHostedJobsPageName: company,
+        },
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Ashby API failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    const jobs = data?.data?.jobBoard?.jobPostings || [];
+
+    return jobs;
+  } catch (error) {
+    console.error(`Error fetching Ashby jobs for ${company}:`, error);
+    return { jobs: [] }; // Return empty list on error to keep flow running
+  }
+}
+
+export async function processMissingJobsForCompanyAshby(missingJobIds, company) {
+if (!missingJobIds.length) return;
+
+  const concurrency = 5; // safe small boost
+
+  const jobsToInsert = await mapWithConcurrency(missingJobIds, concurrency, async (jobId) => {
+    const jobDetails = await getAshbyJobDetails(company.namespace, jobId);
+
+    let sections = await parseGreenhouseJobDescription(jobDetails.descriptionHtml);
+    const sectionText = sections.map((s) => [s.heading, ...(s.content || [])].join(' ')).join('\n');
+
+    let compensationSection = [];
+    
+    if (jobDetails.compensationPhilosophyHtml) {
+      compensationSection = await parseGreenhouseJobDescription(jobDetails.compensationPhilosophyHtml) || '';
+      compensationSection[0].heading = 'Compensation Summary';
+      sections = sections.concat(compensationSection);
+    }
+
+    const compensationText = jobDetails.compensationTierSummary || '' ;
+    const metadata = {
+      compensation : compensationText,
+    }
+
+    const skills = matchSkillsInText(sectionText);
+
+    const jobSlugRaw = company.slug + '-' + jobDetails.title + '-' + jobDetails.id;
+
+    const jobSlug = jobSlugRaw
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    const [experience_level, employment_type, domain] = await Promise.all([
+      getExperienceLevel(jobDetails.title),
+      getEmploymentType(jobDetails.title),
+      getJobDomain(jobDetails.title),
+    ]);
+
+    const jobUrl = `https://jobs.ashbyhq.com/${company.namespace}/${jobDetails.id}`;
+
+    return {
+      company: company.name,
+      company_id: company.id,
+      slug: jobSlug,
+      platform: 'ashby',
+      job_id: jobDetails.id,
+      title: jobDetails.title,
+      url: jobUrl,
+      description: JSON.stringify(sections),
+      experience_level,
+      employment_type : employment_type || jobDetails.employmentType, 
+      domain,
+      location: jobDetails.locationName || 'Worldwide',
+      skills: JSON.stringify(skills),
+      updated_at: new Date().toISOString(),
+      metadata: JSON.stringify(metadata),
+    };
+  });
+
+  const multiRowsColValuesList = jobsToInsert.map((job) => [
+    job.company,
+    job.company_id,
+    job.slug,
+    job.platform,
+    job.job_id,
+    job.title,
+    job.url,
+    job.description,
+    job.experience_level,
+    job.employment_type,
+    job.domain,
+    job.location,
+    job.skills,
+    job.updated_at,
+    job.metadata,
+  ]);
+
+  try {
+    await defaultPgDao.insertOrUpdateMultipleObjs({
+      tableName: 'jobs',
+      columnNames: [
+        'company',
+        'company_id',
+        'slug',
+        'platform',
+        'job_id',
+        'title',
+        'url',
+        'description',
+        'experience_level',
+        'employment_type',
+        'domain',
+        'location',
+        'skills',
+        'updated_at',
+        'metadata',
+      ],
+      multiRowsColValuesList,
+      updateColumnNames: [
+        'title',
+        'url',
+        'description',
+        'experience_level',
+        'employment_type',
+        'domain',
+        'location',
+        'skills',
+        'updated_at',
+        'metadata',
+      ],
+      conflictColumns: ['slug'],
+      returningCol: 'id',
+    });
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+export async function getAshbyJobDetails(company, jobId) {
+  try {
+    const data = await fetchWithRetry(ASHBY_SINGLE_JOB_URL, {
+      method: "POST",
+      headers: ASHBY_HEADERS,
+      body: JSON.stringify({
+        operationName: "ApiJobPosting",
+        query: ASHBY_SINGLE_JOB_QUERY,
+        variables: {
+          organizationHostedJobsPageName: company,
+          jobPostingId: jobId,
+        },
+      }),
+    });
+
+    return data?.data?.jobPosting || null;
+  } catch (err) {
+    console.error("getAshbyJobDetails error:", err);
+    throw err;
+  }
 }

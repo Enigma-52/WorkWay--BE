@@ -37,3 +37,100 @@ export const EXPERIENCE_LEVELS = [
   'Junior',
   'Intern',
 ];
+
+// ASHBY COMPANIES - API Configs
+
+export const ASHBY_ALL_COMPANY_JOBS_API_URL =
+  "https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobBoardWithTeams";
+
+export const ASHBY_HEADERS = {
+  "content-type": "application/json",
+};
+
+export const ASHBY_ALL_COMPANY_JOBS_QUERY = `
+  query ApiJobBoardWithTeams($organizationHostedJobsPageName: String!) {
+    jobBoard: jobBoardWithTeams(
+      organizationHostedJobsPageName: $organizationHostedJobsPageName
+    ) {
+      teams {
+        id
+        name
+        externalName
+        parentTeamId
+        __typename
+      }
+      jobPostings {
+        id
+        title
+        teamId
+        locationId
+        locationName
+        workplaceType
+        employmentType
+        secondaryLocations {
+          ...JobPostingSecondaryLocationParts
+          __typename
+        }
+        compensationTierSummary
+        __typename
+      }
+      __typename
+    }
+  }
+
+  fragment JobPostingSecondaryLocationParts on JobPostingSecondaryLocation {
+    locationId
+    locationName
+    __typename
+  }
+`;
+
+export const ASHBY_SINGLE_JOB_URL =
+  "https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting";
+
+export const ASHBY_SINGLE_JOB_QUERY = `
+  query ApiJobPosting(
+    $organizationHostedJobsPageName: String!
+    $jobPostingId: String!
+  ) {
+    jobPosting(
+      organizationHostedJobsPageName: $organizationHostedJobsPageName
+      jobPostingId: $jobPostingId
+    ) {
+      id
+      title
+      departmentName
+      departmentExternalName
+      locationName
+      locationAddress
+      workplaceType
+      employmentType
+      descriptionHtml
+      isListed
+      isConfidential
+      teamNames
+      secondaryLocationNames
+      compensationTierSummary
+      compensationTiers {
+        id
+        title
+        tierSummary
+        __typename
+      }
+      applicationDeadline
+      scrapeableCompensationSalarySummary
+      compensationPhilosophyHtml
+      applicationLimitCalloutHtml
+      shouldAskForTextingConsent
+      candidateTextingPrivacyPolicyUrl
+      candidateTextingTermsAndConditionsUrl
+      legalEntityNameForTextingConsent
+      automatedProcessingLegalNotice {
+        automatedProcessingLegalNoticeRuleId
+        automatedProcessingLegalNoticeHtml
+        __typename
+      }
+      __typename
+    }
+  }
+`;

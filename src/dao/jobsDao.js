@@ -1,9 +1,9 @@
 import PostgresDao from './dao.js';
 
 const JOB_FEED_COLS =
-  'j.id,j.company_id,j.company,j.slug,j.platform,j.title,j.url,j.experience_level,j.employment_type,j.location,j.domain,j.skills,j.updated_at';
+  'j.id,j.company_id,j.company,j.slug,j.platform,j.title,j.url,j.experience_level,j.employment_type,j.location,j.domain,j.skills,j.updated_at,j.metadata';
 const JOB_LIST_SELECT =
-  'j.id,j.company_id,j.company,j.slug,j.platform,j.title,j.url,j.description,j.experience_level,j.employment_type,j.location,j.domain,j.skills,j.updated_at,j.created_at,c.logo_url AS company_logo_url,c.slug AS company_slug';
+  'j.id,j.company_id,j.company,j.slug,j.platform,j.title,j.url,j.description,j.experience_level,j.employment_type,j.location,j.domain,j.skills,j.updated_at,j.created_at,c.logo_url AS company_logo_url,c.slug AS company_slug,j.metadata';
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
