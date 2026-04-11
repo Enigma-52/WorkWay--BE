@@ -11,9 +11,11 @@ import {
   uuidToBase62
 } from '../utils/helper.js';
 import { defaultPgDao } from '../dao/dao.js';
-import { ASHBY_ALL_COMPANY_JOBS_API_URL , ASHBY_HEADERS , ASHBY_ALL_COMPANY_JOBS_QUERY , ASHBY_SINGLE_JOB_URL , ASHBY_SINGLE_JOB_QUERY} from '../utils/constants.js';
+import { ASHBY_ALL_COMPANY_JOBS_API_URL , ASHBY_HEADERS , ASHBY_ALL_COMPANY_JOBS_QUERY , 
+  ASHBY_SINGLE_JOB_URL , ASHBY_SINGLE_JOB_QUERY , ASHBY_SINGLE_COMPANY_URL , ASHBY_SINGLE_COMPANY_QUERY} from '../utils/constants.js';
 import { mapWithConcurrency } from './dailyService.js';
 import { fetchWithRetry } from '../utils/apiClient.js';
+import pLimit from 'p-limit';
 
 const baseGreenhouseUrl = 'https://boards-api.greenhouse.io/v1/boards/';
 
@@ -409,57 +411,118 @@ export async function insertLeverJobs(jobsArray)
   });
 }
 
-export async function insertAshbyCompanies() {
-  const uniqueCompanies = [...new Set(ashbyCompanies)];
-  const companyPromises = uniqueCompanies.map(async (company) => {
-    try {
-      const companyName = company;
-      const companyDescription = 'No description available';
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
-      const dbRow = {
-        name: companyName,
-        description: companyDescription,
-        slug: companyName.toLowerCase().replace(/\s+/g, '-'),
-        logo_url: `https://img.logo.dev/${company.toLowerCase()}.com?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
-        location: JSON.stringify({}),
-        website: null,
-        platform: 'ashby',
-        namespace: company.toLowerCase(),
-      };
-      return dbRow;
-    } catch (error) {
-      console.error(`Failed to fetch company ${company}:`, error);
-      return null;
-    }
-  });
+function shuffleArray(arr) {
+  const copy = [...arr];
 
-  const results = await Promise.all(companyPromises);
-  const companies = results.filter((c) => c !== null);
-
-  // DEDUPE BY SLUG (THIS IS THE IMPORTANT PART)
-  const bySlug = new Map();
-
-  for (const c of companies) {
-    if (!bySlug.has(c.slug)) {
-      bySlug.set(c.slug, c);
-    } else {
-      console.log('Duplicate slug detected, dropping:', c.slug);
-    }
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
   }
 
-  const dedupedCompanies = Array.from(bySlug.values());
-
-  await insertCompaniesToDb(dedupedCompanies);
-
-  return { message: 'Inserted ashby companies successfully', count: companies.length };
-
+  return copy;
 }
+
+export async function insertAshbyCompanies() {
+  const uniqueCompanies = shuffleArray([
+    ...new Set(
+      ashbyCompanies.filter(
+        (company) => company && !company.includes('%20')
+      )
+    ),
+  ]);
+
+  const BATCH_SIZE = 5;
+  const COOLDOWN_MS = 3000;
+
+  let insertedCount = 0;
+
+  for (let i = 0; i < uniqueCompanies.length; i += BATCH_SIZE) {
+    const batch = uniqueCompanies.slice(i, i + BATCH_SIZE);
+
+    const batchResults = await Promise.all(
+      batch.map(async (company) => {
+        try {
+          const companyDetails = await getAshbyCompanyDetails(company);
+
+          if (!companyDetails) {
+            console.log(`Skipping ${company}: no data`);
+            return null;
+          }
+
+          const companyName = companyDetails.name || company;
+
+          return {
+            name: companyName,
+            description: 'No description available',
+            slug: companyName.toLowerCase().replace(/\s+/g, '-'),
+            logo_url: `https://img.logo.dev/${company.toLowerCase()}.com?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
+            location: JSON.stringify({}),
+            website: companyDetails.publicWebsite || null,
+            platform: 'ashby',
+            namespace: company.toLowerCase(),
+          };
+        } catch (error) {
+          console.log(`Failed to fetch company ${company}: ${error.message}`);
+          return null;
+        }
+      })
+    );
+
+    const validRows = batchResults.filter(Boolean);
+
+    const bySlug = new Map();
+    for (const row of validRows) {
+      if (!bySlug.has(row.slug)) {
+        bySlug.set(row.slug, row);
+      }
+    }
+
+    const dedupedBatch = [...bySlug.values()];
+
+    if (dedupedBatch.length > 0) {
+      await insertCompaniesToDb(dedupedBatch);
+      insertedCount += dedupedBatch.length;
+    }
+
+    console.log(
+      `Processed ${Math.min(i + BATCH_SIZE, uniqueCompanies.length)} / ${uniqueCompanies.length} | Inserted: ${insertedCount}`
+    );
+
+    await sleep(COOLDOWN_MS);
+  }
+
+  return {
+    message: 'Inserted ashby companies successfully',
+    count: insertedCount,
+  };
+}
+
+export async function getAshbyCompanyDetails(company) {
+  const response = await fetchWithRetry(ASHBY_SINGLE_COMPANY_URL, {
+      method: "POST",
+      headers: ASHBY_HEADERS,
+      body: JSON.stringify({
+        operationName: "ApiOrganizationFromHostedJobsPageName",
+        query: ASHBY_SINGLE_COMPANY_QUERY,
+        variables: {
+          organizationHostedJobsPageName: company,
+          searchContext: "JobBoard",
+        },
+      }),
+    });
+  return response?.data?.organization;
+}
+
 
 export async function fetchAshbyJobs() {
   // Placeholder for Ashby job fetching logic
   const companies = await defaultPgDao.getAllRows({
     tableName: 'companies',
-    where: "platform = 'ashby' and name = 'OpenAI'",
+    where: "platform = 'ashby'",
     orderBy : 'id ASC',
   });
   const c = companies.length;
@@ -474,12 +537,12 @@ export async function fetchAshbyJobs() {
     const jobIdsFromDB = new Set(getJobsForCompanyFromDB.map((row) => row.job_id));
     const result = await getAshbyJobs(company.namespace);
     const apiJobIds = result.map((job) => String(job.id));
-    const missingJobIds = apiJobIds.filter((id) => !jobIdsFromDB.has(id));
+    const missingJobIds = apiJobIds
+    .filter((id) => !jobIdsFromDB.has(id))
+    .slice(0, 10); // Limit to 20 missing jobs per company for processing
     t += 1;
     if (missingJobIds.length == 0) continue;
-    console.log(missingJobIds.length);
-    const testingJobId = missingJobIds[0];
-    await processMissingJobsForCompanyAshby([testingJobId], company);
+    await processMissingJobsForCompanyAshby(missingJobIds, company);
     console.log('Inserted ', missingJobIds.length, ' jobs for ', company.namespace, ' ', t, '/', c);
   }
   return { success: 'true' };
@@ -513,122 +576,154 @@ try {
   }
 }
 
-export async function processMissingJobsForCompanyAshby(missingJobIds, company) {
-if (!missingJobIds.length) return;
+export async function processMissingJobsForCompanyAshby(
+  missingJobIds,
+  company
+) {
+  if (!missingJobIds.length) return;
 
-  const concurrency = 5; // safe small boost
+  const BATCH_SIZE = 5;
+  const COOLDOWN_MS = 2500;
 
-  const jobsToInsert = await mapWithConcurrency(missingJobIds, concurrency, async (jobId) => {
-    const jobDetails = await getAshbyJobDetails(company.namespace, jobId);
+  for (let i = 0; i < missingJobIds.length; i += BATCH_SIZE) {
+    const batch = missingJobIds.slice(i, i + BATCH_SIZE);
 
-    let sections = await parseGreenhouseJobDescription(jobDetails.descriptionHtml);
-    const sectionText = sections.map((s) => [s.heading, ...(s.content || [])].join(' ')).join('\n');
+    const jobsToInsert = await Promise.all(
+      batch.map(async (jobId) => {
+        try {
+          const jobDetails = await getAshbyJobDetails(
+            company.namespace,
+            jobId
+          );
 
-    let compensationSection = [];
-    
-    if (jobDetails.compensationPhilosophyHtml) {
-      compensationSection = await parseGreenhouseJobDescription(jobDetails.compensationPhilosophyHtml) || '';
-      compensationSection[0].heading = 'Compensation Summary';
-      sections = sections.concat(compensationSection);
+          if (!jobDetails) return null;
+
+          let sections = await parseGreenhouseJobDescription(
+            jobDetails.descriptionHtml
+          );
+
+          const sectionText = sections
+            .map((s) =>
+              [s.heading, ...(s.content || [])].join(' ')
+            )
+            .join('\n');
+
+          let compensationSection = [];
+
+          if (jobDetails.compensationPhilosophyHtml) {
+            compensationSection =
+              await parseGreenhouseJobDescription(
+                jobDetails.compensationPhilosophyHtml
+              );
+
+            if (compensationSection?.length) {
+              compensationSection[0].heading =
+                'Compensation Summary';
+              sections = sections.concat(
+                compensationSection
+              );
+            }
+          }
+
+          const metadata = {
+            compensation:
+              jobDetails.compensationTierSummary || '',
+          };
+
+          const skills = matchSkillsInText(sectionText);
+
+          const jobSlug = `${company.slug}-${jobDetails.title}-${jobDetails.id}`
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+
+          const [
+            experience_level,
+            employment_type,
+            domain,
+          ] = await Promise.all([
+            getExperienceLevel(jobDetails.title),
+            getEmploymentType(jobDetails.title),
+            getJobDomain(jobDetails.title),
+          ]);
+
+          return [
+            company.name,
+            company.id,
+            jobSlug,
+            'ashby',
+            jobDetails.id,
+            jobDetails.title,
+            `https://jobs.ashbyhq.com/${company.namespace}/${jobDetails.id}`,
+            JSON.stringify(sections),
+            experience_level,
+            employment_type ||
+              jobDetails.employmentType,
+            domain,
+            jobDetails.locationName || 'Worldwide',
+            JSON.stringify(skills),
+            new Date().toISOString(),
+            JSON.stringify(metadata),
+          ];
+        } catch (error) {
+          console.log(
+            `Failed job ${jobId}: ${error.message}`
+          );
+          return null;
+        }
+      })
+    );
+
+    const validRows = jobsToInsert.filter(Boolean);
+
+    if (validRows.length) {
+      await defaultPgDao.insertOrUpdateMultipleObjs({
+        tableName: 'jobs',
+        columnNames: [
+          'company',
+          'company_id',
+          'slug',
+          'platform',
+          'job_id',
+          'title',
+          'url',
+          'description',
+          'experience_level',
+          'employment_type',
+          'domain',
+          'location',
+          'skills',
+          'updated_at',
+          'metadata',
+        ],
+        multiRowsColValuesList: validRows,
+        updateColumnNames: [
+          'title',
+          'url',
+          'description',
+          'experience_level',
+          'employment_type',
+          'domain',
+          'location',
+          'skills',
+          'updated_at',
+          'metadata',
+        ],
+        conflictColumns: ['slug'],
+        returningCol: 'id',
+      });
     }
 
-    const compensationText = jobDetails.compensationTierSummary || '' ;
-    const metadata = {
-      compensation : compensationText,
-    }
+    console.log(
+      `Processed ${Math.min(
+        i + BATCH_SIZE,
+        missingJobIds.length
+      )} / ${missingJobIds.length} jobs for ${
+        company.name
+      }`
+    );
 
-    const skills = matchSkillsInText(sectionText);
-
-    const jobSlugRaw = company.slug + '-' + jobDetails.title + '-' + jobDetails.id;
-
-    const jobSlug = jobSlugRaw
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-
-    const [experience_level, employment_type, domain] = await Promise.all([
-      getExperienceLevel(jobDetails.title),
-      getEmploymentType(jobDetails.title),
-      getJobDomain(jobDetails.title),
-    ]);
-
-    const jobUrl = `https://jobs.ashbyhq.com/${company.namespace}/${jobDetails.id}`;
-
-    return {
-      company: company.name,
-      company_id: company.id,
-      slug: jobSlug,
-      platform: 'ashby',
-      job_id: jobDetails.id,
-      title: jobDetails.title,
-      url: jobUrl,
-      description: JSON.stringify(sections),
-      experience_level,
-      employment_type : employment_type || jobDetails.employmentType, 
-      domain,
-      location: jobDetails.locationName || 'Worldwide',
-      skills: JSON.stringify(skills),
-      updated_at: new Date().toISOString(),
-      metadata: JSON.stringify(metadata),
-    };
-  });
-
-  const multiRowsColValuesList = jobsToInsert.map((job) => [
-    job.company,
-    job.company_id,
-    job.slug,
-    job.platform,
-    job.job_id,
-    job.title,
-    job.url,
-    job.description,
-    job.experience_level,
-    job.employment_type,
-    job.domain,
-    job.location,
-    job.skills,
-    job.updated_at,
-    job.metadata,
-  ]);
-
-  try {
-    await defaultPgDao.insertOrUpdateMultipleObjs({
-      tableName: 'jobs',
-      columnNames: [
-        'company',
-        'company_id',
-        'slug',
-        'platform',
-        'job_id',
-        'title',
-        'url',
-        'description',
-        'experience_level',
-        'employment_type',
-        'domain',
-        'location',
-        'skills',
-        'updated_at',
-        'metadata',
-      ],
-      multiRowsColValuesList,
-      updateColumnNames: [
-        'title',
-        'url',
-        'description',
-        'experience_level',
-        'employment_type',
-        'domain',
-        'location',
-        'skills',
-        'updated_at',
-        'metadata',
-      ],
-      conflictColumns: ['slug'],
-      returningCol: 'id',
-    });
-  } catch (error) {
-    console.log(error);
+    await sleep(COOLDOWN_MS);
   }
 }
 

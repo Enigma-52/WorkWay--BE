@@ -134,3 +134,15 @@ export const ASHBY_SINGLE_JOB_QUERY = `
     }
   }
 `;
+
+// SINGLE COMPANY DETAILS
+
+export const ASHBY_SINGLE_COMPANY_URL = "https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiOrganizationFromHostedJobsPageName";
+
+export const ASHBY_SINGLE_COMPANY_QUERY = `
+  query ApiOrganizationFromHostedJobsPageName($organizationHostedJobsPageName: String!, $searchContext: OrganizationSearchContext) 
+  { organization: organizationFromHostedJobsPageName( organizationHostedJobsPageName: $organizationHostedJobsPageName searchContext: 
+   $searchContext ) { ...OrganizationParts __typename } } fragment OrganizationParts on Organization { name publicWebsite customJobsPageUrl 
+   hostedJobsPageSlug allowJobPostIndexing theme { colors showJobFilters showLocationAddress showTeams showAutofillApplicationsBox logoWordmarkImageUrl 
+   logoSquareImageUrl applicationSubmittedSuccessMessage jobBoardTopDescriptionHtml jobBoardBottomDescriptionHtml jobPostingBackUrl __typename } 
+   appConfirmationTrackingPixelHtml recruitingPrivacyPolicyUrl activeFeatureFlags timezone candidateScheduleCancellationReasonRequirementStatus __typename }`;

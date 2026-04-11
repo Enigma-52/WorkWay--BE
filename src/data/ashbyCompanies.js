@@ -3,9 +3,9 @@
 // ]
 
 
-export const ashbyCompanies = ["Deel"]
+// export const ashbyCompanies = ["abacum"]
 
-export const companies = [
+export const ashbyCompanies = [
   "0g",
   "0x",
   "1mind",
@@ -13,7 +13,6 @@ export const companies = [
   "8fleet-inc",
   "8vc",
   "9fin",
-  "a-place-for-mom",
   "a-team",
   "abacum",
   "abby-care",
@@ -1774,10 +1773,6 @@ export const companies = [
   "tomo",
   "tonal",
   "tonicai",
-  "toogeza"
-];
-
-export const companies2 = [
   "toogeza",
   "tools%20for%20humanity",
   "top-hat",
