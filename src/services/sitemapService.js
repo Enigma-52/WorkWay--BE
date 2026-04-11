@@ -58,8 +58,6 @@ function sitemapTag(path, { changefreq = 'weekly', priority = 0.8 } = {}) {
   <sitemap>
     <loc>${BASE_URL}${path}</loc>
     <lastmod>${today()}</lastmod>
-    <changefreq>${changefreq}</changefreq>
-    <priority>${priority}</priority>
   </sitemap>`;
 }
 
