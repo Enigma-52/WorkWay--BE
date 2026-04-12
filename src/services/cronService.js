@@ -539,7 +539,7 @@ export async function fetchAshbyJobs() {
     const apiJobIds = result.map((job) => String(job.id));
     const missingJobIds = apiJobIds
     .filter((id) => !jobIdsFromDB.has(id))
-    .slice(0, 10); // Limit to 20 missing jobs per company for processing
+    .slice(0, 3); // Limit to 20 missing jobs per company for processing
     t += 1;
     if (missingJobIds.length == 0) continue;
     await processMissingJobsForCompanyAshby(missingJobIds, company);
@@ -582,7 +582,7 @@ export async function processMissingJobsForCompanyAshby(
 ) {
   if (!missingJobIds.length) return;
 
-  const BATCH_SIZE = 5;
+  const BATCH_SIZE = 3;
   const COOLDOWN_MS = 2500;
 
   for (let i = 0; i < missingJobIds.length; i += BATCH_SIZE) {
