@@ -79,7 +79,7 @@ class UsersDao extends PostgresDao {
     `;
     return this.getQ({
       sql,
-      values: [[role], displayName, email],
+      values: [JSON.stringify([role]), displayName, email],
       firstResultOnly: true,
     });
   }

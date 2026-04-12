@@ -41,7 +41,7 @@ router.patch('/me', async (req, res) => {
     return res.json({ success: true, user });
   } catch (err) {
     logger.error('user update failed', { error: err.message });
-    return res.status(500).json({ success: false, message: 'update failed' });
+    return res.status(500).json({ success: false, message: 'update failed', detail: err.message });
   }
 });
 
