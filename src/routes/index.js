@@ -11,6 +11,7 @@ import chatRoutes from './chat.js';
 import syncRoutes from './sync.js'
 import feedbackRoutes from './feedback.js';
 import authRoutes from './auth.js';
+import userRoutes from './user.js';
 import seoRoutes from './seo.js';
 import scriptRoutes from './script.js'
 
@@ -26,6 +27,7 @@ router.use('/chat', chatRoutes);
 router.use('/sync', syncRoutes);
 router.use('/feedback', feedbackRoutes);
 router.use('/auth', authRoutes);
+router.use('/user', userRoutes);
 router.use('/scripts' , scriptRoutes)
 
 router.use('/seo', seoRoutes);

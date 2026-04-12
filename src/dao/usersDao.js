@@ -67,6 +67,22 @@ class UsersDao extends PostgresDao {
       firstResultOnly: true,
     });
   }
+
+  async updateRoleAndName({ email, role, displayName }) {
+    const sql = `
+      UPDATE users
+      SET roles = $1, display_name = $2, updated_at = now()
+      WHERE email = $3
+      RETURNING
+        id, email, email_verified, display_name,
+        first_name, last_name, avatar_url, roles, created_at, updated_at
+    `;
+    return this.getQ({
+      sql,
+      values: [[role], displayName, email],
+      firstResultOnly: true,
+    });
+  }
 }
 
 export const usersDao = new UsersDao();
