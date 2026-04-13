@@ -517,35 +517,71 @@ export async function getAshbyCompanyDetails(company) {
   return response?.data?.organization;
 }
 
-
 export async function fetchAshbyJobs() {
-  // Placeholder for Ashby job fetching logic
   const companies = await defaultPgDao.getAllRows({
     tableName: 'companies',
     where: "platform = 'ashby'",
-    orderBy : 'id ASC',
+    orderBy: 'id ASC',
   });
-  const c = companies.length;
-  let t = 0;
-  const jobs = [];
+
+  const total = companies.length;
+  let index = 0;
+
   for (const company of companies) {
-    const getJobsForCompanyFromDB = await defaultPgDao.getAllRowsForChat({
-      tableName: 'jobs',
-      columns: ['job_id'],
-      where: `company_id = ${company.id}`,
-    });
-    const jobIdsFromDB = new Set(getJobsForCompanyFromDB.map((row) => row.job_id));
-    const result = await getAshbyJobs(company.namespace);
-    const apiJobIds = result.map((job) => String(job.id));
-    const missingJobIds = apiJobIds
-    .filter((id) => !jobIdsFromDB.has(id))
-    .slice(0, 3); // Limit to 20 missing jobs per company for processing
-    t += 1;
-    if (missingJobIds.length == 0) continue;
-    await processMissingJobsForCompanyAshby(missingJobIds, company);
-    console.log('Inserted ', missingJobIds.length, ' jobs for ', company.namespace, ' ', t, '/', c);
+    index++;
+
+    try {
+      const existingJobs = await defaultPgDao.getAllRowsForChat({
+        tableName: 'jobs',
+        columns: ['job_id'],
+        where: `company_id = ${company.id}`,
+      });
+
+      const jobIdsFromDB = new Set(
+        existingJobs.map((row) => String(row.job_id))
+      );
+
+      const result = await getAshbyJobs(company.namespace);
+
+      if (!Array.isArray(result)) {
+        console.log(
+          `Skipping ${company.namespace}: invalid response`
+        );
+        await sleep(2000);
+        continue;
+      }
+
+      const apiJobIds = result.map((job) => String(job.id));
+
+      const missingJobIds = apiJobIds
+        .filter((id) => !jobIdsFromDB.has(id))
+        .slice(0, 3);
+
+      if (missingJobIds.length > 0) {
+        await processMissingJobsForCompanyAshby(
+          missingJobIds,
+          company
+        );
+
+        console.log(
+          `Inserted ${missingJobIds.length} jobs for ${company.namespace} ${index}/${total}`
+        );
+      } else {
+        console.log(
+          `No missing jobs for ${company.namespace} ${index}/${total}`
+        );
+      }
+    } catch (error) {
+      console.log(
+        `Failed company ${company.namespace}: ${error.message}`
+      );
+    }
+
+    // VERY IMPORTANT
+    await sleep(1500);
   }
-  return { success: 'true' };
+
+  return { success: true };
 }
 
 export async function getAshbyJobs(company) {
