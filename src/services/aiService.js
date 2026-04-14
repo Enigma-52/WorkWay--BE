@@ -20,10 +20,11 @@ const SYSTEM_MESSAGE = {
     'You are a data enrichment service. Output strictly valid JSON. No markdown. No commentary.',
 };
 
-function buildPrompt(companyName) {
+function buildPrompt(companyName, logoUrl = null) {
   return `
 Find the official website and a concise 2-line description for "${companyName}".
 Always assume that the name mentioned is the company name and there is a company with that name.
+${logoUrl ? `Use the following logo URL for context: ${logoUrl}` : ''}
 
 Return ONLY valid JSON in this exact format:
 {
@@ -46,7 +47,7 @@ async function enrichSingleCompany(company) {
       model: 'openai/gpt-5-nano',
       messages: [
         SYSTEM_MESSAGE,
-        { role: 'user', content: buildPrompt(company.name) },
+        { role: 'user', content: buildPrompt(company.name , company.logo_url) },
       ],
     });
 
@@ -112,6 +113,8 @@ export async function generateCompanyDesc() {
     tableName: 'companies',
     where: "description = 'No description available'",
   });
+
+  console.log(`Found ${companies.length} companies to enrich`);
 
   if (companies.length === 0) return [];
 
