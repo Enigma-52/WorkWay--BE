@@ -554,8 +554,7 @@ export async function fetchAshbyJobs() {
       const apiJobIds = result.map((job) => String(job.id));
 
       const missingJobIds = apiJobIds
-        .filter((id) => !jobIdsFromDB.has(id))
-        .slice(0, 3);
+        .filter((id) => !jobIdsFromDB.has(id));
 
       if (missingJobIds.length > 0) {
         await processMissingJobsForCompanyAshby(
