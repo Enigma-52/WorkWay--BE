@@ -109,7 +109,7 @@ export const jobsQ = {
     SELECT ${JOB_FEED_COLS}
     FROM jobs j
     WHERE j.company_id = $1
-    AND created_at >= NOW() - INTERVAL '7 days'
+    AND created_at >= NOW() - INTERVAL '3 days'
     ORDER BY created_at DESC;
   `
 };
