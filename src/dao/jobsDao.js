@@ -30,7 +30,7 @@ function buildListWhere(filters, opts = {}) {
 
   if (filters.q && filters.q.trim()) {
     const pattern = `%${filters.q.trim().replace(/%/g, '\\%')}%`;
-    whereClauses.push(`(j.title ILIKE $${paramIndex} OR j.company ILIKE $${paramIndex} OR j.location ILIKE $${paramIndex})`);
+    whereClauses.push(`(j.title ILIKE $${paramIndex} OR j.company ILIKE $${paramIndex})`);
     values.push(pattern);
     paramIndex += 1;
   }

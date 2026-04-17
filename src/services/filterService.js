@@ -13,26 +13,29 @@ export async function getDomainJobDetails(slug, page, employment_type, employmen
   const LIMIT = 20;
   const OFFSET = (page - 1) * LIMIT;
 
-  // ✅ 1. Count total rows
-  const countRows = await runPgStatement({
-    query: `
-      SELECT COUNT(*)::int AS count
-      FROM jobs
-      WHERE domain = $1
-    `,
-    values: [domain.name],
-  });
+  const [countRows, getJobsByDomain] = await Promise.all([
+    runPgStatement({
+      query: `
+        SELECT COUNT(*)::int AS count
+        FROM jobs
+        WHERE domain = $1
+          AND ($2 = 'all' OR employment_type = $2)
+          AND ($3 = 'all' OR experience_level = $3)
+          AND ($4 = 'all' OR location ILIKE '%' || $4 || '%')
+      `,
+      values: [domain.name, employment_type, employment_level, location],
+    }),
+    filtersDao.getJobsByDomain({
+      domainName: domain.name,
+      limit: LIMIT,
+      offset: OFFSET,
+      employment_type,
+      employment_level,
+      location,
+    }),
+  ]);
 
   const total = countRows[0]?.count || 0;
-
-  const getJobsByDomain = await filtersDao.getJobsByDomain({
-    domainName: domain.name,
-    limit: LIMIT,
-    offset: OFFSET,
-    employment_type,
-    employment_level,
-    location,
-  });
 
   // ✅ 2. Fetch page rows (your existing DAO)
   //   const getJobsByDomain = await defaultPgDao.getAllRows({
@@ -108,24 +111,27 @@ export async function getSkillJobDetails(slug,
 
     const LIMIT = 20;
     const OFFSET = (page - 1) * LIMIT;
-    const countRows = await runPgStatement({
-      query: `
-        SELECT COUNT(*)::int AS count
-        FROM jobs
-        CROSS JOIN LATERAL jsonb_array_elements(jobs.skills) AS skill_elem
-        WHERE skill_elem->>'name' = $1;
-      `,
-      values: [skill[0].name],
-    });
+    const [countRows, getJobsBySkill] = await Promise.all([
+      runPgStatement({
+        query: `
+          SELECT COUNT(*)::int AS count
+          FROM jobs
+          CROSS JOIN LATERAL jsonb_array_elements(jobs.skills) AS skill_elem
+          WHERE skill_elem->>'name' = $1
+            AND ($2::text IS NULL OR employment_type = $2)
+            AND ($3::text IS NULL OR experience_level = $3)
+            AND ($4::text IS NULL OR location ILIKE '%' || $4 || '%')
+        `,
+        values: [
+          skill[0].name,
+          employment_type === 'all' ? null : employment_type,
+          employment_level === 'all' ? null : employment_level,
+          location === 'all' ? null : location,
+        ],
+      }),
+      skillsDao.getJobsBySkill(skill[0].name, LIMIT, OFFSET, employment_type, employment_level, location),
+    ]);
     const total = countRows[0]?.count || 0;
-    const getJobsBySkill = await skillsDao.getJobsBySkill(
-      skill[0].name,
-      LIMIT,
-      OFFSET,
-      employment_type,
-      employment_level,
-      location,
-    );
     const transformedJobs = await Promise.all(
       getJobsBySkill.map(async (job) => {
         let pickedSection = null;
