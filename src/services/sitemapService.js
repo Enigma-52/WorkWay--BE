@@ -95,8 +95,8 @@ export function generateStaticSitemap() {
     { loc: '/', changefreq: 'daily', priority: 1.0 },
     { loc: '/about', changefreq: 'daily', priority: 0.8 },
     { loc: '/companies', changefreq: 'daily', priority: 0.9 },
-    { loc: '/domains', changefreq: 'daily', priority: 0.8 },
-    { loc: '/jobs', changefreq: 'daily', priority: 0.8 },
+    { loc: '/domains', changefreq: 'daily', priority: 0.9 },
+    { loc: '/jobs', changefreq: 'daily', priority: 0.9 },
     { loc: '/hireme', changefreq: 'daily', priority: 0.8 },
     { loc: '/skills', changefreq: 'daily', priority: 0.8 },
     { loc: '/changelog', changefreq: 'daily', priority: 0.8 },
@@ -177,7 +177,7 @@ export async function generateDomainsSitemap() {
       loc: `/domain/${dObj.slug}`,
       lastmod: d,
       changefreq: 'daily',
-      priority: 0.8,
+      priority: 0.9,
     })
   );
 
@@ -220,7 +220,7 @@ export async function generateLocationSeoSitemap() {
     : SEO_ROLES.flatMap((role) => SEO_LOCATIONS.map((loc) => ({ role, loc })));
 
   const items = source.map(({ role, loc }) =>
-    urlTag({ loc: `/${role}-jobs-in-${loc}`, lastmod: d, changefreq: 'weekly', priority: 0.8 })
+    urlTag({ loc: `/${role}-jobs-in-${loc}`, lastmod: d, changefreq: 'weekly', priority: 0.9 })
   );
 
   return wrapUrlSet(items);
@@ -257,7 +257,7 @@ export async function generateLocationOnlySitemap() {
     : SEO_LOCATIONS; // fallback: show all if query fails
 
   const items = source.map((loc) =>
-    urlTag({ loc: `/jobs-in-${loc}`, lastmod: d, changefreq: 'weekly', priority: 0.8 })
+    urlTag({ loc: `/jobs-in-${loc}`, lastmod: d, changefreq: 'weekly', priority: 0.9 })
   );
 
   return wrapUrlSet(items);
