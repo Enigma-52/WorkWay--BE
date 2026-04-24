@@ -3,6 +3,7 @@ import {
   getJobDetails,
   getJobList,
   getJobFilters,
+  getSalaryInsights,
   normalizeAndValidateListParams,
 } from '../services/jobService.js';
 import { recordJobView } from '../services/jobViewEventsService.js';
@@ -103,6 +104,22 @@ router.get('/filters', async (req, res) => {
       error: 'Internal server error',
       message: err?.message ?? 'Failed to fetch filters',
     });
+  }
+});
+
+router.get('/salary-insights', async (req, res) => {
+  try {
+    const { page, limit, sort, domain, experience_level, employment_type, equity, bonus, location } = req.query;
+    const data = await getSalaryInsights({
+      filters: { domain, experience_level, employment_type, equity, bonus, location },
+      page: Number(page) || 1,
+      limit: Number(limit) || 20,
+      sort: sort || 'salary_desc',
+    });
+    res.json(data);
+  } catch (err) {
+    console.error('GET /api/job/salary-insights error:', err);
+    res.status(500).json({ error: 'Internal server error', message: err?.message });
   }
 });
 

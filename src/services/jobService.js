@@ -6,29 +6,166 @@ import { pickRelevantDescriptionSections } from '../utils/helper.js';
 export async function getJobDetails(slug) {
   try {
     const jobDetails = await jobsDao.getSingleJob({ slug });
+    const job = jobDetails[0];
 
-    const jobDomain = jobDetails[0].domain;
-    const domainJobs = await jobsDao.getDomainJobwithExclusion({
-      domain: jobDomain,
-      excludeSlug: slug,
-    });
+    const allSkills = (job.skills || [])
+      .filter((s) => typeof s === 'object' && s.slug);
+    const fetchSkills = allSkills.slice(0, 3);
+    const fetchSlugs = fetchSkills.map((s) => s.slug);
+    const fetchNames = fetchSkills.map((s) => s.name);
+    const remainingSkills = allSkills.slice(3).map((s) => ({ name: s.name, slug: s.slug }));
 
-    const companyJobs = await jobsDao.getCompanyJobwithExclusion({
-      company: jobDetails[0].company,
-      excludeSlug: slug,
-    });
+    // Run ALL secondary queries in parallel
+    const [domainJobs, companyJobs, jobsBySkill, similarLocationJobs] = await Promise.all([
+      jobsDao.getDomainJobwithExclusion({ domain: job.domain, excludeSlug: slug }),
+      jobsDao.getCompanyJobwithExclusion({ company: job.company, excludeSlug: slug }),
+      fetchSlugs.length > 0
+        ? jobsDao.getRecentJobsBySkills({ skillSlugs: fetchSlugs, skillNames: fetchNames, excludeSlug: slug })
+        : [],
+      job.location
+        ? jobsDao.getSimilarLocationJobs({ location: job.location, excludeSlug: slug })
+        : [],
+    ]);
 
-    const enrichedJobDetails = {
-      ...jobDetails[0],
+    return {
+      ...job,
       similarJobsByDomain: domainJobs,
       otherJobsByCompany: companyJobs,
+      jobsBySkill,
+      remainingSkills,
+      similarLocationJobs,
     };
-
-    return enrichedJobDetails;
   } catch (error) {
     console.error(`Failed to fetch details for job with slug ${slug}:`, error);
     throw error;
   }
+}
+
+function parseSalaryRange(compensation) {
+  if (!compensation) return null;
+  // Match patterns like "$150K", "$150,000", "$150k"
+  const amounts = compensation.match(/\$[\d,]+(?:\.\d+)?[kK]?/g);
+  if (!amounts || amounts.length === 0) return null;
+
+  const parseAmount = (str) => {
+    let num = str.replace(/[$,]/g, '');
+    if (num.toLowerCase().endsWith('k')) {
+      num = parseFloat(num.slice(0, -1)) * 1000;
+    } else {
+      num = parseFloat(num);
+    }
+    return isNaN(num) ? null : num;
+  };
+
+  const min = parseAmount(amounts[0]);
+  const max = amounts.length > 1 ? parseAmount(amounts[1]) : min;
+  return min !== null ? { min, max: max || min } : null;
+}
+
+export async function getSalaryInsights({ filters = {}, page = 1, limit = 20, sort = 'salary_desc' }) {
+  // Stats query is lightweight — only fetches compensation + domain + level
+  const [statsRows, paginatedResult] = await Promise.all([
+    jobsDao.getSalaryStatsRows(),
+    jobsDao.getSalaryInsightsJobs({ filters, page, limit, sort }),
+  ]);
+
+  const analyzed = statsRows.map((row) => {
+    const comp = row.compensation || '';
+    const range = parseSalaryRange(comp);
+    return {
+      ...row,
+      salary_mid: range ? Math.round((range.min + range.max) / 2) : null,
+      offers_equity: comp.toLowerCase().includes('equity'),
+      offers_bonus: comp.toLowerCase().includes('bonus'),
+    };
+  });
+
+  const withSalary = analyzed.filter((j) => j.salary_mid !== null);
+  const equityCount = analyzed.filter((j) => j.offers_equity).length;
+  const bonusCount = analyzed.filter((j) => j.offers_bonus).length;
+
+  const buckets = { '<$100K': 0, '$100K–150K': 0, '$150K–200K': 0, '$200K–250K': 0, '$250K–300K': 0, '$300K–400K': 0, '$400K–500K': 0, '$500K+': 0 };
+  for (const j of withSalary) {
+    const mid = j.salary_mid;
+    if (mid < 100000) buckets['<$100K']++;
+    else if (mid < 150000) buckets['$100K–150K']++;
+    else if (mid < 200000) buckets['$150K–200K']++;
+    else if (mid < 250000) buckets['$200K–250K']++;
+    else if (mid < 300000) buckets['$250K–300K']++;
+    else if (mid < 400000) buckets['$300K–400K']++;
+    else if (mid < 500000) buckets['$400K–500K']++;
+    else buckets['$500K+']++;
+  }
+
+  const byDomain = {};
+  for (const j of withSalary) {
+    if (!j.domain) continue;
+    if (!byDomain[j.domain]) byDomain[j.domain] = { count: 0, total: 0 };
+    byDomain[j.domain].count++;
+    byDomain[j.domain].total += j.salary_mid;
+  }
+  const domainAvg = Object.entries(byDomain)
+    .map(([domain, d]) => ({ domain, avg_salary: Math.round(d.total / d.count), count: d.count }))
+    .sort((a, b) => b.avg_salary - a.avg_salary);
+
+  const byLevel = {};
+  for (const j of withSalary) {
+    if (!j.experience_level) continue;
+    if (!byLevel[j.experience_level]) byLevel[j.experience_level] = { count: 0, total: 0 };
+    byLevel[j.experience_level].count++;
+    byLevel[j.experience_level].total += j.salary_mid;
+  }
+  const levelAvg = Object.entries(byLevel)
+    .map(([level, d]) => ({ level, avg_salary: Math.round(d.total / d.count), count: d.count }))
+    .sort((a, b) => b.avg_salary - a.avg_salary);
+
+  const avgSalary = withSalary.length > 0
+    ? Math.round(withSalary.reduce((s, j) => s + j.salary_mid, 0) / withSalary.length)
+    : 0;
+  const medianSalary = withSalary.length > 0
+    ? (() => {
+        const sorted = withSalary.map((j) => j.salary_mid).sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 !== 0 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+      })()
+    : 0;
+
+  // Enrich paginated jobs with parsed salary
+  const jobs = paginatedResult.jobs.map((job) => {
+    const comp = job.compensation || '';
+    const range = parseSalaryRange(comp);
+    return {
+      ...job,
+      salary_min: range?.min || null,
+      salary_max: range?.max || null,
+      salary_mid: range ? Math.round((range.min + range.max) / 2) : null,
+      offers_equity: comp.toLowerCase().includes('equity'),
+      offers_bonus: comp.toLowerCase().includes('bonus'),
+    };
+  });
+
+  return {
+    stats: {
+      total_jobs: analyzed.length,
+      jobs_with_salary: withSalary.length,
+      equity_count: equityCount,
+      bonus_count: bonusCount,
+      avg_salary: avgSalary,
+      median_salary: medianSalary,
+    },
+    salary_buckets: buckets,
+    by_domain: domainAvg,
+    by_experience_level: levelAvg,
+    jobs,
+    meta: {
+      page: paginatedResult.page,
+      limit: paginatedResult.limit,
+      total: paginatedResult.total,
+      total_pages: Math.ceil(paginatedResult.total / paginatedResult.limit),
+      has_next: paginatedResult.page * paginatedResult.limit < paginatedResult.total,
+      has_prev: paginatedResult.page > 1,
+    },
+  };
 }
 
 const SORT_VALUES = ['recent'];

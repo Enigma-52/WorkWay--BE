@@ -3,6 +3,7 @@ import {
   getCompanyDetails,
   getCompanyOverview,
   getAllCompanies,
+  generateCompanyEmbeddings,
 } from '../services/companyService.js';
 
 const router = express.Router();
@@ -55,6 +56,16 @@ router.get('/overview', async (req, res) => {
   } catch (err) {
     console.error('GET /api/company/overview failed:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/generate-embeddings', async (req, res) => {
+  try {
+    const result = await generateCompanyEmbeddings();
+    res.json(result);
+  } catch (err) {
+    console.error('POST /api/company/generate-embeddings failed:', err);
+    res.status(500).json({ error: 'Internal server error', detail: err.message });
   }
 });
 

@@ -99,6 +99,15 @@ FROM (
     COUNT(j.id) DESC
   LIMIT 6;
 `,
+  GET_COMPANIES_WITHOUT_EMBEDDINGS: `
+    SELECT id, name, description
+    FROM companies
+    WHERE embeddings IS NULL
+    ORDER BY id ASC;
+  `,
+  UPDATE_COMPANY_EMBEDDING: `
+    UPDATE companies SET embeddings = $1 WHERE id = $2;
+  `,
 };
 
 class CompanyDao extends PostgresDao {
@@ -138,6 +147,20 @@ class CompanyDao extends PostgresDao {
       },
       companies: listResult || [],
     };
+  }
+
+  async getCompaniesWithoutEmbeddings() {
+    return this.getQ({
+      sql: companyQ.GET_COMPANIES_WITHOUT_EMBEDDINGS,
+      values: [],
+    });
+  }
+
+  async updateCompanyEmbedding(companyId, embedding) {
+    return this.updateQ({
+      sql: companyQ.UPDATE_COMPANY_EMBEDDING,
+      values: [JSON.stringify(embedding), companyId],
+    });
   }
 
   async getOverview() {
