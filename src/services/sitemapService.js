@@ -108,6 +108,8 @@ export function generateStaticSitemap() {
     { loc: '/location-jobs', changefreq: 'weekly', priority: 0.9 },
     { loc: '/jobs-by-location', changefreq: 'weekly', priority: 0.9 },
     { loc: '/guides', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/salary-insights', changefreq: 'daily', priority: 0.9 },
+
 
     // Guides
 

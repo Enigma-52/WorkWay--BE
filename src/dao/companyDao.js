@@ -102,11 +102,17 @@ FROM (
   GET_COMPANIES_WITHOUT_EMBEDDINGS: `
     SELECT id, name, description
     FROM companies
-    WHERE embeddings IS NULL
+    WHERE embedding IS NULL
+    ORDER BY id ASC;
+  `,
+  GET_ALL_COMPANY_EMBEDDINGS: `
+    SELECT id, name, slug, embedding
+    FROM companies
+    WHERE embedding IS NOT NULL
     ORDER BY id ASC;
   `,
   UPDATE_COMPANY_EMBEDDING: `
-    UPDATE companies SET embeddings = $1 WHERE id = $2;
+    UPDATE companies SET embedding = $1 WHERE id = $2;
   `,
 };
 
@@ -147,6 +153,13 @@ class CompanyDao extends PostgresDao {
       },
       companies: listResult || [],
     };
+  }
+
+  async getAllCompanyEmbeddings() {
+    return this.getQ({
+      sql: companyQ.GET_ALL_COMPANY_EMBEDDINGS,
+      values: [],
+    });
   }
 
   async getCompaniesWithoutEmbeddings() {

@@ -59,7 +59,7 @@ router.get('/overview', async (req, res) => {
   }
 });
 
-router.post('/generate-embeddings', async (req, res) => {
+router.get('/generate-embeddings', async (req, res) => {
   try {
     const result = await generateCompanyEmbeddings();
     res.json(result);
