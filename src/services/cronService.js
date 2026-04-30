@@ -8,11 +8,18 @@ import {
   getEmploymentType,
   getJobDomain,
   normalizeLeverDescription,
-  uuidToBase62
+  uuidToBase62,
 } from '../utils/helper.js';
 import { defaultPgDao } from '../dao/dao.js';
-import { ASHBY_ALL_COMPANY_JOBS_API_URL , ASHBY_HEADERS , ASHBY_ALL_COMPANY_JOBS_QUERY , 
-  ASHBY_SINGLE_JOB_URL , ASHBY_SINGLE_JOB_QUERY , ASHBY_SINGLE_COMPANY_URL , ASHBY_SINGLE_COMPANY_QUERY} from '../utils/constants.js';
+import {
+  ASHBY_ALL_COMPANY_JOBS_API_URL,
+  ASHBY_HEADERS,
+  ASHBY_ALL_COMPANY_JOBS_QUERY,
+  ASHBY_SINGLE_JOB_URL,
+  ASHBY_SINGLE_JOB_QUERY,
+  ASHBY_SINGLE_COMPANY_URL,
+  ASHBY_SINGLE_COMPANY_QUERY,
+} from '../utils/constants.js';
 import { mapWithConcurrency } from './dailyService.js';
 import { fetchWithRetry } from '../utils/apiClient.js';
 import pLimit from 'p-limit';
@@ -24,7 +31,7 @@ export async function getJobs(company) {
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   const result = await response.json();
   // Return the first 5 jobs
-  return result.jobs.slice(0,2);
+  return result.jobs.slice(0, 2);
 }
 
 export async function getJobDescription(company, jobId) {
@@ -172,8 +179,8 @@ export async function insertGreenhouseCompanies() {
   const companyPromises = uniqueCompanies.map(async (company) => {
     try {
       const response = await fetch(`${baseGreenhouseUrl}${company.toLowerCase()}`);
-      if (!response.ok){
-        console.log("[GH-COMPANIES]   Skipped - Failed check");
+      if (!response.ok) {
+        console.log('[GH-COMPANIES]   Skipped - Failed check');
         return null;
       }
       const result = await response.json();
@@ -250,9 +257,7 @@ export async function insertCompaniesToDb(companies) {
   });
 }
 
-
 ///// LEVER /////
-
 
 export async function insertLeverCompanies() {
   const uniqueCompanies = [...new Set(leverCompanies)];
@@ -297,7 +302,6 @@ export async function insertLeverCompanies() {
   await insertCompaniesToDb(dedupedCompanies);
 
   return { message: 'Inserted lever companies successfully', count: companies.length };
-
 }
 
 export async function fetchLeverJobs() {
@@ -305,7 +309,7 @@ export async function fetchLeverJobs() {
     tableName: 'companies',
     where: "platform = 'lever'",
   });
-  console.log("TOTAL " , companies.length )
+  console.log('TOTAL ', companies.length);
   for (const company of companies) {
     const companyName = company.name;
     const apiUrl = `https://api.lever.co/v0/postings/${companyName.toLowerCase()}?mode=json`;
@@ -313,7 +317,7 @@ export async function fetchLeverJobs() {
       const response = await fetch(apiUrl);
       const results = await response.json();
       if (!results || results.ok === false) {
-        console.log("No jobs to fetch , skipping for " , companyName)
+        console.log('No jobs to fetch , skipping for ', companyName);
         continue;
       }
       const jobsArray = [];
@@ -322,14 +326,14 @@ export async function fetchLeverJobs() {
         const jobId = await uuidToBase62(job.id);
         const jobSlugRaw = company.slug + '-' + job.text + '-' + jobId;
         const jobSlug = jobSlugRaw
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '');
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
         const [experience_level, employment_type, domain] = await Promise.all([
-              getExperienceLevel(job.text),
-              getEmploymentType(job.text),
-              getJobDomain(job.text),
-            ]);
+          getExperienceLevel(job.text),
+          getEmploymentType(job.text),
+          getJobDomain(job.text),
+        ]);
         const dbRow = {
           company: company.name,
           company_id: company.id,
@@ -348,8 +352,8 @@ export async function fetchLeverJobs() {
         };
         jobsArray.push(dbRow);
       }
-      const insertedJobs = await insertLeverJobs(jobsArray)
-      console.log("Inserting " , jobsArray.length , " jobs into DB for " , companyName)
+      const insertedJobs = await insertLeverJobs(jobsArray);
+      console.log('Inserting ', jobsArray.length, ' jobs into DB for ', companyName);
     } catch (error) {
       console.error(`Error fetching jobs for ${companyName}:`, error);
     }
@@ -357,8 +361,7 @@ export async function fetchLeverJobs() {
   return { message: 'Fetched lever jobs and inserted successfully' };
 }
 
-export async function insertLeverJobs(jobsArray)
-{
+export async function insertLeverJobs(jobsArray) {
   const multiRowsColValuesList = jobsArray.map((job) => [
     job.company,
     job.company_id,
@@ -428,11 +431,7 @@ function shuffleArray(arr) {
 
 export async function insertAshbyCompanies() {
   const uniqueCompanies = shuffleArray([
-    ...new Set(
-      ashbyCompanies.filter(
-        (company) => company && !company.includes('%20')
-      )
-    ),
+    ...new Set(ashbyCompanies.filter((company) => company && !company.includes('%20'))),
   ]);
 
   const BATCH_SIZE = 5;
@@ -503,21 +502,22 @@ export async function insertAshbyCompanies() {
 
 export async function getAshbyCompanyDetails(company) {
   const response = await fetchWithRetry(ASHBY_SINGLE_COMPANY_URL, {
-      method: "POST",
-      headers: ASHBY_HEADERS,
-      body: JSON.stringify({
-        operationName: "ApiOrganizationFromHostedJobsPageName",
-        query: ASHBY_SINGLE_COMPANY_QUERY,
-        variables: {
-          organizationHostedJobsPageName: company,
-          searchContext: "JobBoard",
-        },
-      }),
-    });
+    method: 'POST',
+    headers: ASHBY_HEADERS,
+    body: JSON.stringify({
+      operationName: 'ApiOrganizationFromHostedJobsPageName',
+      query: ASHBY_SINGLE_COMPANY_QUERY,
+      variables: {
+        organizationHostedJobsPageName: company,
+        searchContext: 'JobBoard',
+      },
+    }),
+  });
   return response?.data?.organization;
 }
 
 export async function fetchAshbyJobs() {
+  console.log('Starting Ashby jobs ingestion');
   const companies = await defaultPgDao.getAllRows({
     tableName: 'companies',
     where: "platform = 'ashby'",
@@ -537,43 +537,31 @@ export async function fetchAshbyJobs() {
         where: `company_id = ${company.id}`,
       });
 
-      const jobIdsFromDB = new Set(
-        existingJobs.map((row) => String(row.job_id))
-      );
+      const jobIdsFromDB = new Set(existingJobs.map((row) => String(row.job_id)));
 
       const result = await getAshbyJobs(company.namespace);
 
       if (!Array.isArray(result)) {
-        console.log(
-          `Skipping ${company.namespace}: invalid response`
-        );
+        console.log(`Skipping ${company.namespace}: invalid response`);
         await sleep(2000);
         continue;
       }
 
       const apiJobIds = result.map((job) => String(job.id));
 
-      const missingJobIds = apiJobIds
-        .filter((id) => !jobIdsFromDB.has(id));
+      const missingJobIds = apiJobIds.filter((id) => !jobIdsFromDB.has(id));
 
       if (missingJobIds.length > 0) {
-        await processMissingJobsForCompanyAshby(
-          missingJobIds,
-          company
-        );
+        await processMissingJobsForCompanyAshby(missingJobIds, company);
 
         console.log(
           `Inserted ${missingJobIds.length} jobs for ${company.namespace} ${index}/${total}`
         );
       } else {
-        console.log(
-          `No missing jobs for ${company.namespace} ${index}/${total}`
-        );
+        console.log(`No missing jobs for ${company.namespace} ${index}/${total}`);
       }
     } catch (error) {
-      console.log(
-        `Failed company ${company.namespace}: ${error.message}`
-      );
+      console.log(`Failed company ${company.namespace}: ${error.message}`);
     }
 
     // VERY IMPORTANT
@@ -584,12 +572,12 @@ export async function fetchAshbyJobs() {
 }
 
 export async function getAshbyJobs(company) {
-try {
-  const response = await fetch(ASHBY_ALL_COMPANY_JOBS_API_URL, {
-      method: "POST",
+  try {
+    const response = await fetch(ASHBY_ALL_COMPANY_JOBS_API_URL, {
+      method: 'POST',
       headers: ASHBY_HEADERS,
       body: JSON.stringify({
-        operationName: "ApiJobBoardWithTeams",
+        operationName: 'ApiJobBoardWithTeams',
         query: ASHBY_ALL_COMPANY_JOBS_QUERY,
         variables: {
           organizationHostedJobsPageName: company,
@@ -611,10 +599,7 @@ try {
   }
 }
 
-export async function processMissingJobsForCompanyAshby(
-  missingJobIds,
-  company
-) {
+export async function processMissingJobsForCompanyAshby(missingJobIds, company) {
   if (!missingJobIds.length) return;
 
   const BATCH_SIZE = 3;
@@ -626,43 +611,31 @@ export async function processMissingJobsForCompanyAshby(
     const jobsToInsert = await Promise.all(
       batch.map(async (jobId) => {
         try {
-          const jobDetails = await getAshbyJobDetails(
-            company.namespace,
-            jobId
-          );
+          const jobDetails = await getAshbyJobDetails(company.namespace, jobId);
 
           if (!jobDetails) return null;
 
-          let sections = await parseGreenhouseJobDescription(
-            jobDetails.descriptionHtml
-          );
+          let sections = await parseGreenhouseJobDescription(jobDetails.descriptionHtml);
 
           const sectionText = sections
-            .map((s) =>
-              [s.heading, ...(s.content || [])].join(' ')
-            )
+            .map((s) => [s.heading, ...(s.content || [])].join(' '))
             .join('\n');
 
           let compensationSection = [];
 
           if (jobDetails.compensationPhilosophyHtml) {
-            compensationSection =
-              await parseGreenhouseJobDescription(
-                jobDetails.compensationPhilosophyHtml
-              );
+            compensationSection = await parseGreenhouseJobDescription(
+              jobDetails.compensationPhilosophyHtml
+            );
 
             if (compensationSection?.length) {
-              compensationSection[0].heading =
-                'Compensation Summary';
-              sections = sections.concat(
-                compensationSection
-              );
+              compensationSection[0].heading = 'Compensation Summary';
+              sections = sections.concat(compensationSection);
             }
           }
 
           const metadata = {
-            compensation:
-              jobDetails.compensationTierSummary || '',
+            compensation: jobDetails.compensationTierSummary || '',
           };
 
           const skills = matchSkillsInText(sectionText);
@@ -672,11 +645,7 @@ export async function processMissingJobsForCompanyAshby(
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-+|-+$/g, '');
 
-          const [
-            experience_level,
-            employment_type,
-            domain,
-          ] = await Promise.all([
+          const [experience_level, employment_type, domain] = await Promise.all([
             getExperienceLevel(jobDetails.title),
             getEmploymentType(jobDetails.title),
             getJobDomain(jobDetails.title),
@@ -692,8 +661,7 @@ export async function processMissingJobsForCompanyAshby(
             `https://jobs.ashbyhq.com/${company.namespace}/${jobDetails.id}`,
             JSON.stringify(sections),
             experience_level,
-            employment_type ||
-              jobDetails.employmentType,
+            employment_type || jobDetails.employmentType,
             domain,
             jobDetails.locationName || 'Worldwide',
             JSON.stringify(skills),
@@ -701,9 +669,7 @@ export async function processMissingJobsForCompanyAshby(
             JSON.stringify(metadata),
           ];
         } catch (error) {
-          console.log(
-            `Failed job ${jobId}: ${error.message}`
-          );
+          console.log(`Failed job ${jobId}: ${error.message}`);
           return null;
         }
       })
@@ -753,9 +719,7 @@ export async function processMissingJobsForCompanyAshby(
       `Processed ${Math.min(
         i + BATCH_SIZE,
         missingJobIds.length
-      )} / ${missingJobIds.length} jobs for ${
-        company.name
-      }`
+      )} / ${missingJobIds.length} jobs for ${company.name}`
     );
 
     await sleep(COOLDOWN_MS);
@@ -765,10 +729,10 @@ export async function processMissingJobsForCompanyAshby(
 export async function getAshbyJobDetails(company, jobId) {
   try {
     const data = await fetchWithRetry(ASHBY_SINGLE_JOB_URL, {
-      method: "POST",
+      method: 'POST',
       headers: ASHBY_HEADERS,
       body: JSON.stringify({
-        operationName: "ApiJobPosting",
+        operationName: 'ApiJobPosting',
         query: ASHBY_SINGLE_JOB_QUERY,
         variables: {
           organizationHostedJobsPageName: company,
@@ -779,7 +743,7 @@ export async function getAshbyJobDetails(company, jobId) {
 
     return data?.data?.jobPosting || null;
   } catch (err) {
-    console.error("getAshbyJobDetails error:", err);
+    console.error('getAshbyJobDetails error:', err);
     throw err;
   }
 }
