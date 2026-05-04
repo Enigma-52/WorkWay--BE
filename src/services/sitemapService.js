@@ -105,9 +105,9 @@ export function generateStaticSitemap() {
     { loc: '/privacy-policy', changefreq: 'daily', priority: 0.8 },
     { loc: '/terms', changefreq: 'daily', priority: 0.8 },
     { loc: '/disclaimer', changefreq: 'daily', priority: 0.8 },
-    { loc: '/location-jobs', changefreq: 'weekly', priority: 0.9 },
-    { loc: '/jobs-by-location', changefreq: 'weekly', priority: 0.9 },
-    { loc: '/guides', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/location-jobs', changefreq: 'daily', priority: 0.9 },
+    { loc: '/jobs-by-location', changefreq: 'daily', priority: 0.9 },
+    { loc: '/guides', changefreq: 'daily', priority: 0.9 },
     { loc: '/salary-insights', changefreq: 'daily', priority: 0.9 },
 
 
@@ -222,7 +222,7 @@ export async function generateLocationSeoSitemap() {
     : SEO_ROLES.flatMap((role) => SEO_LOCATIONS.map((loc) => ({ role, loc })));
 
   const items = source.map(({ role, loc }) =>
-    urlTag({ loc: `/${role}-jobs-in-${loc}`, lastmod: d, changefreq: 'weekly', priority: 0.9 })
+    urlTag({ loc: `/${role}-jobs-in-${loc}`, lastmod: d, changefreq: 'daily', priority: 0.9 })
   );
 
   return wrapUrlSet(items);
@@ -259,7 +259,7 @@ export async function generateLocationOnlySitemap() {
     : SEO_LOCATIONS; // fallback: show all if query fails
 
   const items = source.map((loc) =>
-    urlTag({ loc: `/jobs-in-${loc}`, lastmod: d, changefreq: 'weekly', priority: 0.9 })
+    urlTag({ loc: `/jobs-in-${loc}`, lastmod: d, changefreq: 'daily', priority: 0.9 })
   );
 
   return wrapUrlSet(items);
@@ -365,7 +365,7 @@ export async function generateJobsSitemapPage(page) {
     urlTag({
       loc: `/job/${r.slug}`,
       lastmod: today(),
-      changefreq: 'weekly',
+      changefreq: 'daily',
       priority: 0.9,
     })
   );
