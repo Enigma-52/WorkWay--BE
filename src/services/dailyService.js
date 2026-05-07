@@ -272,3 +272,10 @@ export async function mapWithConcurrency(items, limit, asyncFn) {
   await Promise.all(workers);
   return results;
 }
+
+const baseWorkableUrl = 'https://apply.workable.com/api/v1/accounts/{company}?full=true';
+const baseWorkableJobsUrl = 'https://apply.workable.com/api/v3/accounts/{company}/jobs'
+const baseWorkableJobDetailUrl = 'https://apply.workable.com/api/v2/accounts/{company}/jobs/{job_id}'
+
+export async function insertWorkableJobsDaily() {
+}
