@@ -1,6 +1,7 @@
 import { greenhouseCompanies } from '../data/greenhouseCompanies.js';
 import { leverCompanies } from '../data/leverCompanies.js';
 import { ashbyCompanies } from '../data/ashbyCompanies.js';
+import { workableCompanies } from '../data/workableCompanies.js';
 import { matchSkillsInText } from '../data/skills.js';
 import {
   parseGreenhouseJobDescription,
@@ -746,4 +747,108 @@ export async function getAshbyJobDetails(company, jobId) {
     console.error('getAshbyJobDetails error:', err);
     throw err;
   }
+}
+
+const baseWorkableUrl = 'https://apply.workable.com/api/v1/accounts/{company}?full=true';
+
+
+export async function getWorkableCompanyDetails(company) {
+  try {
+    const response = await fetch(baseWorkableUrl.replace('{company}', company.toLowerCase()));
+    if (!response.ok) {
+      throw new Error(`Workable API failed: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error(`Error fetching Workable company details for ${company}:`, error);
+    return null;
+  }
+}
+
+export async function insertWorkableCompanies(){
+  const uniqueCompanies = [...new Set(workableCompanies)];
+  const BATCH_SIZE = 10;
+  const COOLDOWN_MS = 3000;
+
+  let insertedCount = 0;
+
+  for (let i = 0; i < uniqueCompanies.length; i += BATCH_SIZE) {
+    const batch = uniqueCompanies.slice(i, i + BATCH_SIZE);
+
+    const batchResults = await Promise.all(
+      batch.map(async (company) => {
+        try {
+          const companyDetails = await getWorkableCompanyDetails(company);
+
+          if (!companyDetails) {
+            console.log(`Skipping ${company}: no data`);
+            return null;
+          }
+
+          console.dir(companyDetails, { depth: null });
+
+          const companyName = companyDetails.name || company;
+
+          let description = 'No description available';
+          if (companyDetails?.details?.overview?.description) {
+            const rawDescription = companyDetails.details.overview.description;
+
+            description = rawDescription
+              .replace(/<\/p>/gi, '. ')      // paragraph end -> full stop
+              .replace(/<br\s*\/?>/gi, '. ') // line breaks -> full stop
+              .replace(/<[^>]*>/g, '')       // remove remaining HTML tags
+              .replace(/\s+/g, ' ')          // normalize spaces
+              .replace(/\.\s*\./g, '.')      // remove duplicate dots
+              .replace(/^\.\s*/, '')         // remove starting dot
+              .replace(/\s*\.$/, '.')        // clean ending
+              .trim();
+          }
+
+          return {
+            name: companyName,
+            description: description,
+            slug: companyName.toLowerCase().replace(/\s+/g, '-'),
+            logo_url: companyDetails.logo || `https://img.logo.dev/${company.toLowerCase()}.com?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
+            location: JSON.stringify({}),
+            website: companyDetails.url || null,
+            platform: 'workable',
+            namespace: company.toLowerCase(),
+          };
+        } catch (error) {
+          console.log(`Failed to fetch company ${company}: ${error.message}`);
+          return null;
+        }
+      })
+    );
+
+    console.dir(batchResults , { depth: null });
+
+    const validRows = batchResults.filter(Boolean);
+
+    const bySlug = new Map();
+    for (const row of validRows) {
+      if (!bySlug.has(row.slug)) {
+        bySlug.set(row.slug, row);
+      }
+    }
+
+    const dedupedBatch = [...bySlug.values()];
+
+    // if (dedupedBatch.length > 0) {
+    //   await insertCompaniesToDb(dedupedBatch);
+    //   insertedCount += dedupedBatch.length;
+    // }
+
+    console.log(
+      `Processed ${Math.min(i + BATCH_SIZE, uniqueCompanies.length)} / ${uniqueCompanies.length} | Inserted: ${insertedCount}`
+    );
+
+    await sleep(COOLDOWN_MS);
+  }
+
+  return {
+    message: 'Inserted workable companies successfully',
+    count: insertedCount,
+  };
 }

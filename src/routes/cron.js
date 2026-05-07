@@ -1,5 +1,5 @@
 import express from 'express';
-import { fetchGreenhouseJobs, insertGreenhouseCompanies , insertLeverCompanies , fetchLeverJobs , insertAshbyCompanies , fetchAshbyJobs} from '../services/cronService.js';
+import { fetchGreenhouseJobs, insertGreenhouseCompanies , insertLeverCompanies , fetchLeverJobs , insertAshbyCompanies , fetchAshbyJobs , insertWorkableCompanies} from '../services/cronService.js';
 import { backfillSkillsFromStoredDescriptions } from '../services/backfillService.js'
 import { insertGreenhouseJobsDaily , insertWorkableJobsDaily} from "../services/dailyService.js";
 
@@ -30,6 +30,12 @@ router.get('/insert_ashby_companies', async (req, res) => {
   const result = await insertAshbyCompanies();
   res.json(result);
 });
+
+router.get('/insert_workable_companies', async (req, res) => {
+  const result = await insertWorkableCompanies();
+  res.json(result);
+});
+
 
 router.get('/insert_ashby_jobs', async (req, res) => {
   const result = await fetchAshbyJobs();
