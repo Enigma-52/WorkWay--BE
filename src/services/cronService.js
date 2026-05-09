@@ -767,9 +767,9 @@ export async function getWorkableCompanyDetails(company) {
 }
 
 export async function insertWorkableCompanies(){
-  const uniqueCompanies = [...new Set(workableCompanies)];
+  const uniqueCompanies = [...new Set(workableCompanies.slice(0, 10))];
   const BATCH_SIZE = 10;
-  const COOLDOWN_MS = 3000;
+  const COOLDOWN_MS = 5000;
 
   let insertedCount = 0;
 
@@ -803,11 +803,13 @@ export async function insertWorkableCompanies(){
               .trim();
           }
 
+          const companyLogoName = await extractDomain(companyDetails.url) || company.toLowerCase() + '.com';
+
           return {
             name: companyName,
             description: description,
             slug: companyName.toLowerCase().replace(/\s+/g, '-'),
-            logo_url: companyDetails.logo || `https://img.logo.dev/${company.toLowerCase()}.com?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
+            logo_url: `https://img.logo.dev/${companyLogoName}?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
             location: JSON.stringify({}),
             website: companyDetails.url || null,
             platform: 'workable',
@@ -847,4 +849,17 @@ export async function insertWorkableCompanies(){
     message: 'Inserted workable companies successfully',
     count: insertedCount,
   };
+}
+
+async function extractDomain(url) {
+  try {
+    // add protocol if missing
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
+    }
+
+    return new URL(url).hostname.replace(/^www\./i, '');
+  } catch {
+    return null;
+  }
 }
