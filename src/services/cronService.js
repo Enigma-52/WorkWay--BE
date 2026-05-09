@@ -786,8 +786,6 @@ export async function insertWorkableCompanies(){
             return null;
           }
 
-          console.dir(companyDetails, { depth: null });
-
           const companyName = companyDetails.name || company;
 
           let description = 'No description available';
@@ -822,8 +820,6 @@ export async function insertWorkableCompanies(){
       })
     );
 
-    console.dir(batchResults , { depth: null });
-
     const validRows = batchResults.filter(Boolean);
 
     const bySlug = new Map();
@@ -835,10 +831,10 @@ export async function insertWorkableCompanies(){
 
     const dedupedBatch = [...bySlug.values()];
 
-    // if (dedupedBatch.length > 0) {
-    //   await insertCompaniesToDb(dedupedBatch);
-    //   insertedCount += dedupedBatch.length;
-    // }
+    if (dedupedBatch.length > 0) {
+      await insertCompaniesToDb(dedupedBatch);
+      insertedCount += dedupedBatch.length;
+    }
 
     console.log(
       `Processed ${Math.min(i + BATCH_SIZE, uniqueCompanies.length)} / ${uniqueCompanies.length} | Inserted: ${insertedCount}`
