@@ -1,1 +1,1 @@
-export const workableCompanies = ["huggingface"];
+export const workableCompanies = ["exotec"];

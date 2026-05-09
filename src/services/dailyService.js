@@ -198,7 +198,7 @@ export async function insertWorkableJobsDaily() {
     });
     const jobIdsFromDB = new Set(getJobsForCompanyFromDB.map((row) => row.job_id));
     const result = await getWorkableJobs(company.namespace);
-    const apiJobIds = result.jobs.map((job) => String(job.id));
+    const apiJobIds = result.jobs.map((job) => String(job.shortcode));
     const missingJobIds = apiJobIds.filter((id) => !jobIdsFromDB.has(id));
     t += 1;
     if (missingJobIds.length == 0) continue;
@@ -209,8 +209,144 @@ export async function insertWorkableJobsDaily() {
 }
 
 export async function getWorkableJobs(company) {
+  try {
+    const url = baseWorkableJobsUrl.replace('{company}', company.toLowerCase());
+    const response = await fetchWithRetry(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+    const jobs = response.results || [];
+    return { jobs };
+  } catch (err) {
+    if (err?.message?.includes('404')) {
+      console.log(`Workable board not found for ${company}`);
+      return { jobs: [] };
+    }
+
+    console.error(`Workable fetch failed for ${company}`, err.message);
+    return { jobs: [] };
+  }
 }
 
 export async function processMissingWorkableJobsForCompany(missingJobIds, company) {
+  if (!missingJobIds.length) return;
+
+  const concurrency = 5;
+
+  const jobsToInsert = await mapWithConcurrency(missingJobIds, concurrency, async (jobId) => {
+    try {
+      const jobUrl = baseWorkableJobDetailUrl
+        .replace('{company}', company.namespace.toLowerCase())
+        .replace('{job_id}', jobId);
+      const jobDetails = await fetchWithRetry(jobUrl, {});
+
+      const jobSlugRaw = company.slug + '-' + jobDetails.title + '-' + jobDetails.shortcode;
+
+      const sections = await parseGreenhouseJobDescription(jobDetails.description);
+      const sectionText = sections.map((s) => [s.heading, ...(s.content || [])].join(' ')).join('\n');
+
+      const skills = matchSkillsInText(sectionText);
+
+      const [experience_level, employment_type, domain] = await Promise.all([
+        getExperienceLevel(jobDetails.title),
+        getEmploymentType(jobDetails.title),
+        getJobDomain(jobDetails.title),
+      ]);
+
+      const locationString = `${jobDetails.location.city}, ${jobDetails.location.country}`;
+
+      const jobSlug = jobSlugRaw
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+      const jobAbsoluteUrl = `https://apply.workable.com/${company.namespace.toLowerCase()}/j/${jobDetails.shortcode}/`;
+
+      return {
+        company: company.name,
+        company_id: company.id,
+        slug: jobSlug,
+        platform: 'workable',
+        job_id: jobDetails.shortcode,
+        title: jobDetails.title,
+        url: jobAbsoluteUrl,
+        description: JSON.stringify(sections),
+        experience_level: experience_level,
+        employment_type: employment_type,
+        domain: domain,
+        location: locationString || 'Worldwide',
+        skills: JSON.stringify(skills),
+        updated_at: new Date().toISOString(),
+      };
+    } catch (err) {
+      console.error(`Failed to fetch details for Workable job ${jobId} of company ${company.namespace}`, err.message);
+      return null; // Skip this job but continue with others
+    }
+  });
+
+  const validJobsToInsert = jobsToInsert.filter(Boolean);
+
+  if (validJobsToInsert.length === 0) {
+    console.log(`No valid Workable jobs to insert for company ${company.namespace}`);
+    return;
+  }
+
+  const multiRowsColValuesList = validJobsToInsert.map((job) => [
+    job.company,
+    job.company_id,
+    job.slug,
+    job.platform,
+    job.job_id,
+    job.title,
+    job.url,
+    job.description,
+    job.experience_level,
+    job.employment_type,
+    job.domain,
+    job.location,
+    job.skills,
+    job.updated_at,
+  ]);
+
+  try {
+    await defaultPgDao.insertOrUpdateMultipleObjs({
+      tableName: 'jobs',
+      columnNames: [
+        'company',
+        'company_id',
+        'slug',
+        'platform',
+        'job_id',
+        'title',
+        'url',
+        'description',
+        'experience_level',
+        'employment_type',
+        'domain',
+        'location',
+        'skills',
+        'updated_at',
+      ],
+      multiRowsColValuesList,
+      updateColumnNames: [
+        'title',
+        'url',
+        'description',
+        'experience_level',
+        'employment_type',
+        'domain',
+        'location',
+        'skills',
+        'updated_at',
+      ],
+      conflictColumns: ['slug'],
+      returningCol: 'id',
+    });
+  } catch (error) {
+    console.log(error);
+  }
 
 }
