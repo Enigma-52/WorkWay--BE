@@ -750,31 +750,105 @@ export async function getAshbyJobDetails(company, jobId) {
 }
 
 const baseWorkableUrl = 'https://apply.workable.com/api/v1/accounts/{company}?full=true';
+const WORKABLE_COMPANY_REQUEST_TIMEOUT_MS = 12000;
+const WORKABLE_COMPANY_MAX_RETRIES = 3;
+const WORKABLE_COMPANY_RETRYABLE_STATUSES = new Set([403, 408, 425, 429, 500, 502, 503, 504]);
+
+function stripHtmlToText(html = '') {
+  return html
+    .replace(/<\/p>/gi, '. ')
+    .replace(/<br\s*\/?>/gi, '. ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\.\s*\./g, '.')
+    .replace(/^\.\s*/, '')
+    .replace(/\s*\.$/, '.')
+    .trim();
+}
+
+async function fetchWorkableCompanyDetailsWithRetry(company, retries = WORKABLE_COMPANY_MAX_RETRIES) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), WORKABLE_COMPANY_REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(baseWorkableUrl.replace('{company}', company.toLowerCase()), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'WorkWayBot/1.0 (+https://www.workway.dev; company-ingestion)',
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const shouldRetry = retries > 0 && WORKABLE_COMPANY_RETRYABLE_STATUSES.has(response.status);
+      if (shouldRetry) {
+        const attempt = WORKABLE_COMPANY_MAX_RETRIES - retries + 1;
+        await sleep(1000 * attempt);
+        return fetchWorkableCompanyDetailsWithRetry(company, retries - 1);
+      }
+
+      const err = new Error(`Workable API failed: ${response.status}`);
+      err.status = response.status;
+      throw err;
+    }
+
+    return response.json();
+  } catch (error) {
+    if (retries > 0) {
+      const attempt = WORKABLE_COMPANY_MAX_RETRIES - retries + 1;
+      await sleep(1000 * attempt);
+      return fetchWorkableCompanyDetailsWithRetry(company, retries - 1);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 
 export async function getWorkableCompanyDetails(company) {
   try {
-    const response = await fetch(baseWorkableUrl.replace('{company}', company.toLowerCase()));
-    if (!response.ok) {
-      throw new Error(`Workable API failed: ${response.status}`);
-    }
-    const data = await response.json();
+    const data = await fetchWorkableCompanyDetailsWithRetry(company);
     return data;
   } catch (error) {
-    console.error(`Error fetching Workable company details for ${company}:`, error);
+    if (error?.status === 404) {
+      console.log(`Workable company board not found for ${company}`);
+      return null;
+    }
+    if (error?.status === 403) {
+      console.log(`Workable returned 403 for company ${company}; skipping for now`);
+      return null;
+    }
+    console.error(`Error fetching Workable company details for ${company}:`, error.message);
     return null;
   }
 }
 
 export async function insertWorkableCompanies(){
-  const uniqueCompanies = [...new Set(workableCompanies.slice(0, 10))];
-  const BATCH_SIZE = 10;
+  const uniqueCompanies = [...new Set(workableCompanies.filter(Boolean))];
+  const existingWorkableCompanies = await defaultPgDao.getAllRows({
+    tableName: 'companies',
+    columns: ['namespace'],
+    where: "platform = 'workable'",
+  });
+  const existingNamespaces = new Set(
+    existingWorkableCompanies
+      .map((row) => String(row.namespace || '').toLowerCase().trim())
+      .filter(Boolean)
+  );
+  const companiesToInsert = uniqueCompanies.filter(
+    (company) => !existingNamespaces.has(String(company).toLowerCase().trim())
+  );
+  const BATCH_SIZE = 5;
   const COOLDOWN_MS = 5000;
 
   let insertedCount = 0;
+  let failedCount = 0;
 
-  for (let i = 0; i < uniqueCompanies.length; i += BATCH_SIZE) {
-    const batch = uniqueCompanies.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < companiesToInsert.length; i += BATCH_SIZE) {
+    const batch = companiesToInsert.slice(i, i + BATCH_SIZE);
 
     const batchResults = await Promise.all(
       batch.map(async (company) => {
@@ -786,36 +860,34 @@ export async function insertWorkableCompanies(){
             return null;
           }
 
-          const companyName = companyDetails.name || company;
+          const companyName = (companyDetails.name || company).trim();
+          const companyWebsite = companyDetails.url || null;
 
           let description = 'No description available';
           if (companyDetails?.details?.overview?.description) {
-            const rawDescription = companyDetails.details.overview.description;
-
-            description = rawDescription
-              .replace(/<\/p>/gi, '. ')      // paragraph end -> full stop
-              .replace(/<br\s*\/?>/gi, '. ') // line breaks -> full stop
-              .replace(/<[^>]*>/g, '')       // remove remaining HTML tags
-              .replace(/\s+/g, ' ')          // normalize spaces
-              .replace(/\.\s*\./g, '.')      // remove duplicate dots
-              .replace(/^\.\s*/, '')         // remove starting dot
-              .replace(/\s*\.$/, '.')        // clean ending
-              .trim();
+            description = stripHtmlToText(companyDetails.details.overview.description) || description;
           }
 
-          const companyLogoName = await extractDomain(companyDetails.url) || company.toLowerCase() + '.com';
+          const companyLogoName = await extractDomain(companyWebsite) || company.toLowerCase() + '.com';
+          const normalizedSlug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+          if (!normalizedSlug) {
+            console.log(`Skipping ${company}: invalid slug after normalization`);
+            return null;
+          }
 
           return {
             name: companyName,
             description: description,
-            slug: companyName.toLowerCase().replace(/\s+/g, '-'),
+            slug: normalizedSlug,
             logo_url: `https://img.logo.dev/${companyLogoName}?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
             location: JSON.stringify({}),
-            website: companyDetails.url || null,
+            website: companyWebsite,
             platform: 'workable',
             namespace: company.toLowerCase(),
           };
         } catch (error) {
+          failedCount += 1;
           console.log(`Failed to fetch company ${company}: ${error.message}`);
           return null;
         }
@@ -839,7 +911,7 @@ export async function insertWorkableCompanies(){
     }
 
     console.log(
-      `Processed ${Math.min(i + BATCH_SIZE, uniqueCompanies.length)} / ${uniqueCompanies.length} | Inserted: ${insertedCount}`
+      `Processed ${Math.min(i + BATCH_SIZE, companiesToInsert.length)} / ${companiesToInsert.length} | Inserted: ${insertedCount} | Failed: ${failedCount}`
     );
 
     await sleep(COOLDOWN_MS);
@@ -848,6 +920,8 @@ export async function insertWorkableCompanies(){
   return {
     message: 'Inserted workable companies successfully',
     count: insertedCount,
+    failed: failedCount,
+    skipped_existing: uniqueCompanies.length - companiesToInsert.length,
   };
 }
 

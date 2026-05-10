@@ -240,7 +240,6 @@ export async function insertWorkableJobsDaily() {
     tableName: 'companies',
     where: "platform = 'workable'",
     orderBy : 'id DESC',
-    limit : 10,
   });
   const c = companies.length;
   let t = 0;
