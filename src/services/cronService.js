@@ -1000,7 +1000,7 @@ async function fetchYCCompanyDetails(companyName) {
   const company = parsed?.props?.company || {};
 
 
-  const banner_logo = await imgUploadToR2Buffer(company?.logo_url , 'emergent-banner')
+  const banner_logo = await imgUploadToR2Buffer(company?.logo_url , `${slug}-banner-logo`)
 
   const metadata = {
     ycBatch : company?.batch,
