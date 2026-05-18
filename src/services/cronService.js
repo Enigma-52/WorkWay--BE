@@ -2,6 +2,7 @@ import { greenhouseCompanies } from '../data/greenhouseCompanies.js';
 import { leverCompanies } from '../data/leverCompanies.js';
 import { ashbyCompanies } from '../data/ashbyCompanies.js';
 import { workableCompanies } from '../data/workableCompanies.js';
+import { ycCompanies } from '../data/ycCompanies.js';
 import { matchSkillsInText } from '../data/skills.js';
 import {
   parseGreenhouseJobDescription,
@@ -24,6 +25,9 @@ import {
 import { mapWithConcurrency } from './dailyService.js';
 import { fetchWithRetry } from '../utils/apiClient.js';
 import pLimit from 'p-limit';
+import axios from "axios";
+import * as cheerio from "cheerio";
+import he from "he";
 
 const baseGreenhouseUrl = 'https://boards-api.greenhouse.io/v1/boards/';
 
@@ -936,4 +940,99 @@ async function extractDomain(url) {
   } catch {
     return null;
   }
+}
+
+const YC_BASE_URL = "https://www.ycombinator.com";
+
+export async function insertYCcompanies() {
+  const uniqueCompanies = [...new Set(ycCompanies.filter(Boolean))];
+
+  const results = [];
+
+  for (const companyName of uniqueCompanies) {
+    try {
+      console.log(`Fetching: ${companyName}`);
+
+      const companyData = await fetchYCCompanyDetails(companyName);
+
+      results.push(companyData);
+    } catch (error) {
+      console.error(`Failed: ${companyName}`, error.message);
+    }
+  }
+
+  return results;
+}
+
+function buildCompanySlug(companyName) {
+  return companyName
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-");
+}
+
+async function fetchYCCompanyDetails(companyName) {
+  const slug = buildCompanySlug(companyName);
+
+  const url = `${YC_BASE_URL}/companies/${slug}`;
+
+  const response = await axios.get(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+        "Chrome/124.0.0.0 Safari/537.36",
+    },
+  });
+
+  const $ = cheerio.load(response.data);
+
+  const rawPayload = $("div[data-page]").attr("data-page");
+
+  if (!rawPayload) {
+    throw new Error(`No embedded payload found for ${companyName}`);
+  }
+
+  const parsed = JSON.parse(he.decode(rawPayload));
+
+  const company = parsed?.props?.company || {};
+  const metadata = {
+    ycBatch : company?.batch,
+    foundedYear : company?.year_founded,
+    teamSize : company?.team_size,
+    status : company?.ycdc_status,
+    tagline : company?.one_liner,
+    social : {
+      linkedin : company?.linkedin_url,
+      twitter : company?.twitter_url,
+      github : company?.github_url,
+    },
+    tags : company?.tags || [],
+    ycPartner: company?.primary_group_partner || false,
+  };
+
+  const founders = (company?.founders || []).map((founder) => ({
+    name : founder?.full_name,
+    title : founder?.title,
+    bio : founder?.founder_bio,
+    image : founder?.avatar_thumb_url,
+    social : {
+      linkedin : founder?.linkedin_url,
+      twitter : founder?.twitter_url,
+    },
+  }));
+
+  const companyDetails = {
+    name: company.name,
+    slug: slug,
+    description: company.long_description || "No description available",
+    website: company.website,
+    logo_url: company.small_logo_url || `https://img.logo.dev/${company.website}?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
+    metadata,
+    founders,
+  };
+
+  return companyDetails;
 }
