@@ -1004,10 +1004,13 @@ async function fetchYCCompanyDetails(companyName) {
     teamSize : company?.team_size,
     status : company?.ycdc_status,
     tagline : company?.one_liner,
+    banner_logo : company?.logo_url,
     social : {
       linkedin : company?.linkedin_url,
       twitter : company?.twitter_url,
       github : company?.github_url,
+      facebook : company?.fb_url,
+      crunchbase : company?.cb_url,
     },
     tags : company?.tags || [],
     ycPartner: company?.primary_group_partner || false,
