@@ -1,7 +1,11 @@
 import * as cheerio from 'cheerio';
 import he from 'he';
 import basex from "base-x";
+import axios from "axios";
+import sharp from "sharp";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 
+import { R2Client } from "./r2Client.js";
 export async function getJobDomain(title) {
   const t = ` ${title.toLowerCase().replace(/[,]/g, ' ')} `;
   if (t.includes(' android ')) return 'Android';
@@ -381,4 +385,32 @@ const BASE62 = basex("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUV
 export async function uuidToBase62(uuid) {
   const hex = uuid.replace(/-/g, "");
   return BASE62.encode(Buffer.from(hex, "hex"));
+}
+
+const BUCKET = "workway-static";
+const CDN_BASE = "https://cdn.workway.dev";
+export async function imgUploadToR2Buffer(imageUrl, namespace) {
+  const res = await axios.get(imageUrl, {
+    responseType: "arraybuffer",
+    timeout: 10000,
+  });
+
+  const contentType = res.headers["content-type"];
+  const extension = contentType.split("/")[1];
+
+  const buffer = Buffer.from(res.data);
+
+  const key = `logos/${namespace}.${extension}`;
+
+  await R2Client.send(
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+      CacheControl: "public, max-age=31536000, immutable",
+    })
+  );
+
+  return `${CDN_BASE}/${key}`;
 }

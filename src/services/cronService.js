@@ -11,6 +11,7 @@ import {
   getJobDomain,
   normalizeLeverDescription,
   uuidToBase62,
+  imgUploadToR2Buffer,
 } from '../utils/helper.js';
 import { defaultPgDao } from '../dao/dao.js';
 import {
@@ -996,15 +997,18 @@ async function fetchYCCompanyDetails(companyName) {
   }
 
   const parsed = JSON.parse(he.decode(rawPayload));
-
   const company = parsed?.props?.company || {};
+
+
+  const banner_logo = await imgUploadToR2Buffer(company?.logo_url , 'emergent-banner')
+
   const metadata = {
     ycBatch : company?.batch,
     foundedYear : company?.year_founded,
     teamSize : company?.team_size,
     status : company?.ycdc_status,
     tagline : company?.one_liner,
-    banner_logo : company?.logo_url,
+    banner_logo : banner_logo,
     social : {
       linkedin : company?.linkedin_url,
       twitter : company?.twitter_url,
