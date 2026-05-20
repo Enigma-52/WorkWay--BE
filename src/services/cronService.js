@@ -962,7 +962,7 @@ export async function insertYCcompanies() {
     }
   }
 
-  return results;
+  await insertCompaniesToDb(results);
 }
 
 function buildCompanySlug(companyName) {
@@ -972,6 +972,22 @@ function buildCompanySlug(companyName) {
     .replace(/&/g, "and")
     .replace(/[^\w\s-]/g, "")
     .replace(/\s+/g, "-");
+}
+
+async function cleanText(text) {
+  return text
+    // replace escaped newlines/carriage returns
+    .replace(/\\r\\n|\\n|\\r/g, ". ")
+    
+    // replace actual newlines/carriage returns
+    .replace(/[\r\n]+/g, ". ")
+    
+    // collapse multiple dots/spaces
+    .replace(/\.\s*\.+/g, ". ")
+    .replace(/\s+/g, " ")
+    
+    // trim extra spaces
+    .trim();
 }
 
 async function fetchYCCompanyDetails(companyName) {
@@ -1002,6 +1018,19 @@ async function fetchYCCompanyDetails(companyName) {
 
   const banner_logo = await imgUploadToR2Buffer(company?.logo_url , `${slug}-banner-logo`)
 
+  const founders = await Promise.all(
+    (company?.founders || []).map(async (founder) => ({
+      name: founder?.full_name,
+      title: founder?.title,
+      bio: await cleanText(founder?.founder_bio),
+      image: founder?.avatar_thumb_url,
+      social: {
+        linkedin: founder?.linkedin_url,
+        twitter: founder?.twitter_url,
+      },
+    }))
+  );
+
   const metadata = {
     ycBatch : company?.batch,
     foundedYear : company?.year_founded,
@@ -1018,27 +1047,18 @@ async function fetchYCCompanyDetails(companyName) {
     },
     tags : company?.tags || [],
     ycPartner: company?.primary_group_partner || false,
+    founders
   };
-
-  const founders = (company?.founders || []).map((founder) => ({
-    name : founder?.full_name,
-    title : founder?.title,
-    bio : founder?.founder_bio,
-    image : founder?.avatar_thumb_url,
-    social : {
-      linkedin : founder?.linkedin_url,
-      twitter : founder?.twitter_url,
-    },
-  }));
 
   const companyDetails = {
     name: company.name,
     slug: slug,
-    description: company.long_description || "No description available",
+    description: await cleanText(company.long_description) || "No description available",
     website: company.website,
     logo_url: company.small_logo_url || `https://img.logo.dev/${company.website}?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
     metadata,
-    founders,
+    platform: "ycombinator",
+    namespace: toLowerCase(company.name),
   };
 
   return companyDetails;
