@@ -962,7 +962,8 @@ export async function insertYCcompanies() {
     }
   }
 
-  await insertCompaniesToDb(results);
+  // await insertCompaniesToDb(results);
+  return results;
 }
 
 function buildCompanySlug(companyName) {
@@ -991,9 +992,8 @@ async function cleanText(text) {
 }
 
 async function fetchYCCompanyDetails(companyName) {
-  const slug = buildCompanySlug(companyName);
 
-  const url = `${YC_BASE_URL}/companies/${slug}`;
+  const url = `${YC_BASE_URL}/companies/${companyName.toLowerCase()}`;
 
   const response = await axios.get(url, {
     headers: {
@@ -1016,7 +1016,7 @@ async function fetchYCCompanyDetails(companyName) {
   const company = parsed?.props?.company || {};
 
 
-  const banner_logo = await imgUploadToR2Buffer(company?.logo_url , `${slug}-banner-logo`)
+  const banner_logo = await imgUploadToR2Buffer(company?.logo_url , `${companyName.toLowerCase()}-banner-logo`)
 
   const founders = await Promise.all(
     (company?.founders || []).map(async (founder) => ({
@@ -1050,6 +1050,8 @@ async function fetchYCCompanyDetails(companyName) {
     founders
   };
 
+  const slug = buildCompanySlug(companyName);
+
   const companyDetails = {
     name: company.name,
     slug: slug,
@@ -1058,7 +1060,8 @@ async function fetchYCCompanyDetails(companyName) {
     logo_url: company.small_logo_url || `https://img.logo.dev/${company.website}?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
     metadata,
     platform: "ycombinator",
-    namespace: toLowerCase(company.name),
+    namespace: companyName.toLowerCase(),
+    location : company?.location || null,
   };
 
   return companyDetails;
