@@ -1030,6 +1030,12 @@ async function fetchYCCompanyDetails(companyName) {
       },
     }))
   );
+  
+  let avatar_thumb_url = company?.primary_group_partner?.avatar_thumb_url;
+  let avatar_url = await imgUploadToR2Buffer(avatar_thumb_url, `${companyName.toLowerCase()}-partner-avatar`) ;
+  if (avatar_url) {
+    company.primary_group_partner.avatar_thumb_url = avatar_url;
+  }
 
   const metadata = {
     ycBatch : company?.batch,

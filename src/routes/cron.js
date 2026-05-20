@@ -41,7 +41,6 @@ router.get('/insert_yc_companies', async (req, res) => {
   res.json(result);
 });
 
-
 router.get('/insert_ashby_jobs', async (req, res) => {
   const result = await fetchAshbyJobs();
   res.json(result);
@@ -52,10 +51,7 @@ router.get('/bf_skills', async (req, res) => {
   res.json(result);
 });
 
-
 /// Daily ///
-
-
 
 router.get('/daily_greenhouse', async (req, res) => {
   console.log('Cron job /insert_greenhouse triggered for daily');
