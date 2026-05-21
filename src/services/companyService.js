@@ -17,6 +17,7 @@ export async function getCompanyDetails(slug) {
       jobListings: jobDetails,
       recentlyPostedJobs: recentlyPostedJobs
     };
+    console.dir(enrichedCompanyDetails , { depth: null });
     return enrichedCompanyDetails;
   } catch (error) {
     console.error(`Failed to fetch details for company with slug ${slug}:`, error);

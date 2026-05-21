@@ -242,6 +242,7 @@ export async function insertCompaniesToDb(companies) {
     company.website,
     company.platform,
     company.namespace,
+    company.metadata ? JSON.stringify(company.metadata) : null,
   ]);
 
   await defaultPgDao.insertOrUpdateMultipleObjs({
@@ -255,6 +256,7 @@ export async function insertCompaniesToDb(companies) {
       'website',
       'platform',
       'namespace',
+      'metadata'
     ],
     multiRowsColValuesList,
     updateColumnNames: [],
@@ -962,12 +964,22 @@ export async function insertYCcompanies() {
     }
   }
 
-  // await insertCompaniesToDb(results);
-  return results;
+  await insertCompaniesToDb(results);
+  return { message: 'Inserted YC companies successfully', count: results.length };
+  // return results;
 }
 
 function buildCompanySlug(companyName) {
   return companyName
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-");
+}
+
+async function buildNameSlug(name) {
+  return name
     .trim()
     .toLowerCase()
     .replace(/&/g, "and")
@@ -1023,7 +1035,7 @@ async function fetchYCCompanyDetails(companyName) {
       name: founder?.full_name,
       title: founder?.title,
       bio: await cleanText(founder?.founder_bio),
-      image: founder?.avatar_thumb_url,
+      image: await imgUploadToR2Buffer(founder?.avatar_thumb_url, `${companyName.toLowerCase()}-founder-${await buildNameSlug(founder?.full_name)}`),
       social: {
         linkedin: founder?.linkedin_url,
         twitter: founder?.twitter_url,
@@ -1058,16 +1070,20 @@ async function fetchYCCompanyDetails(companyName) {
 
   const slug = buildCompanySlug(companyName);
 
+  const companylogo = await imgUploadToR2Buffer(company?.small_logo_url, `${companyName.toLowerCase()}-small-logo`);
+
   const companyDetails = {
     name: company.name,
     slug: slug,
     description: await cleanText(company.long_description) || "No description available",
     website: company.website,
-    logo_url: company.small_logo_url || `https://img.logo.dev/${company.website}?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
+    logo_url: companylogo || `https://img.logo.dev/${company.website}?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
     metadata,
     platform: "ycombinator",
     namespace: companyName.toLowerCase(),
-    location : company?.location || null,
+    location : JSON.stringify({
+      location : company?.location,
+    }),
   };
 
   return companyDetails;
