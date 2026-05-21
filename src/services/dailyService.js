@@ -440,3 +440,35 @@ export async function processMissingWorkableJobsForCompany(missingJobIds, compan
   }
 
 }
+
+export async function insertYCJobsDaily() {
+  const companies = await defaultPgDao.getAllRows({
+    tableName: 'companies',
+    where: "platform = 'ycombinator'",
+    orderBy : 'id ASC',
+  });
+  const c = companies.length;
+  let t = 0;
+  for (const company of companies) {
+    const getJobsForCompanyFromDB = await defaultPgDao.getAllRowsForChat({
+      tableName: 'jobs',
+      columns: ['job_id'],
+      where: `company_id = ${company.id}`,
+    });
+    const jobIdsFromDB = new Set(getJobsForCompanyFromDB.map((row) => row.job_id));
+    const result = await getYCJobs(company.namespace);
+    const apiJobIds = result.jobs.map((job) => String(job.id));
+    const missingJobIds = apiJobIds.filter((id) => !jobIdsFromDB.has(id));
+    t += 1;
+    if (missingJobIds.length == 0) continue;
+    await processMissingYCForCompany(missingJobIds, company);
+    console.log('Inserted ', missingJobIds.length, ' jobs for ', company.namespace, ' ', t, '/', c);
+  }
+  return { success: 'true' };
+}
+
+export async function getYCJobs(company) {
+}
+
+export async function processMissingYCForCompany(missingJobIds, company) {
+}

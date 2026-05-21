@@ -1,7 +1,7 @@
 import express from 'express';
 import { fetchGreenhouseJobs, insertGreenhouseCompanies , insertYCcompanies ,  insertLeverCompanies , fetchLeverJobs , insertAshbyCompanies , fetchAshbyJobs , insertWorkableCompanies} from '../services/cronService.js';
 import { backfillSkillsFromStoredDescriptions } from '../services/backfillService.js'
-import { insertGreenhouseJobsDaily , insertWorkableJobsDaily} from "../services/dailyService.js";
+import { insertGreenhouseJobsDaily , insertWorkableJobsDaily , insertYCJobsDaily} from "../services/dailyService.js";
 
 const router = express.Router();
 
@@ -62,6 +62,12 @@ router.get('/daily_greenhouse', async (req, res) => {
 router.get('/daily_workable', async (req, res) => {
   console.log('Cron job for workable triggered for daily');
   const result = await insertWorkableJobsDaily();
+  res.json(result);
+});
+
+router.get('/daily_yc', async (req, res) => {
+  console.log('Cron job for yc triggered for daily');
+  const result = await insertYCJobsDaily();
   res.json(result);
 });
 
