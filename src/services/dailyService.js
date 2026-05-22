@@ -455,18 +455,30 @@ export async function insertYCJobsDaily() {
   for (const company of companies) {
     const getJobsForCompanyFromDB = await defaultPgDao.getAllRowsForChat({
       tableName: 'jobs',
-      columns: ['job_id'],
+      columns: ['slug'],
       where: `company_id = ${company.id}`,
     });
-    const jobIdsFromDB = new Set(getJobsForCompanyFromDB.map((row) => row.job_id));
+    const jobSlugsFromDB = new Set(
+      getJobsForCompanyFromDB.map((row) => row.slug)
+    );
+
     const result = await getYCJobs(company.namespace);
-    const apiJobIds = result.map((job) => String(job.id));
-    const missingJobIds = apiJobIds.filter((id) => !jobIdsFromDB.has(id));
+
+    // extract slug from YC URL
+    const apiJobSlugs = result.map((job) => {
+      return job.url.split("/jobs/")[1];
+    });
+
+    // jobs not present in DB
+    const missingJobSlugs = apiJobSlugs.filter(
+      (slug) => !jobSlugsFromDB.has(slug)
+    );
     t += 1;
-    if (missingJobIds.length == 0) continue;
-    await processMissingYCForCompany(missingJobIds[0], company);
+    if (missingJobSlugs.length == 0) continue;
+    const one = missingJobSlugs[0];
+    await processMissingYCForCompany([one], company.namespace);
     await sleep(5000); // be nice to YC
-    console.log('Inserted ', missingJobIds.length, ' jobs for ', company.namespace, ' ', t, '/', c);
+    console.log('Inserted ', missingJobSlugs.length, ' jobs for ', company.namespace, ' ', t, '/', c);
   }
   return { success: 'true' };
 }
@@ -511,25 +523,25 @@ export async function getYCJobs(companyName) {
 }
 
 export async function processMissingYCForCompany(
-  missingJobIds,
+  missingJobSlugs,
   company
 ) {
   // process in batches of 2
   const BATCH_SIZE = 2;
 
-  for (let i = 0; i < missingJobIds.length; i += BATCH_SIZE) {
-    const batch = missingJobIds.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < missingJobSlugs.length; i += BATCH_SIZE) {
+    const batch = missingJobSlugs.slice(i, i + BATCH_SIZE);
 
     try {
       // run 2 jobs concurrently
       await Promise.all(
-        batch.map(async (jobId) => {
+        batch.map(async (jobSlug) => {
           try {
-            await fetchAndStoreYCJob(jobId, company);
+            await fetchAndStoreYCJob(jobSlug, company);
 
           } catch (err) {
             console.error(
-              `Failed YC job ${jobId} for ${company.namespace}`,
+              `Failed YC job ${jobSlug} for ${company}`,
               err.message
             );
           }
@@ -543,12 +555,52 @@ export async function processMissingYCForCompany(
     }
 
     // wait 5s before next batch
-    if (i + BATCH_SIZE < missingJobIds.length) {
+    if (i + BATCH_SIZE < missingJobSlugs.length) {
       console.log("Sleeping for 5 seconds...");
       await sleep(5000);
     }
   }
 }
 
-export async function fetchAndStoreYCJob(jobId, company) {
+async function fetchAndStoreYCJob(jobSlug , companySlug) {
+  const url = `https://www.ycombinator.com/companies/${companySlug}/jobs/${jobSlug}`;
+
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+      "AppleWebKit/537.36 (KHTML, like Gecko) " +
+      "Chrome/124.0.0.0 Safari/537.36",
+  };
+
+  try {
+    const response = await axios.get(url, { headers });
+
+    const $ = cheerio.load(response.data);
+
+    const rawData = $("div[data-page]").attr("data-page");
+
+    if (!rawData) {
+      throw new Error("Could not find embedded payload");
+    }
+
+    // decode html entities
+    const decoded = he.decode(rawData);
+
+    // parse JSON
+    const pageJson = JSON.parse(decoded);
+
+    // extract only job object
+    const job = pageJson?.props?.job;
+
+    console.dir(job, { depth: null });
+
+    return job;
+  } catch (err) {
+    console.error(
+      `Failed fetching YC job ${jobSlug}`,
+      err.message
+    );
+
+    return null;
+  }
 }
