@@ -8,6 +8,9 @@ import {
   getJobDomain,
 } from '../utils/helper.js';
 import { matchSkillsInText } from '../data/skills.js';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import he from 'he';
 
 const baseGreenhouseUrl = 'https://boards-api.greenhouse.io/v1/boards/';
 
@@ -457,6 +460,7 @@ export async function insertYCJobsDaily() {
     });
     const jobIdsFromDB = new Set(getJobsForCompanyFromDB.map((row) => row.job_id));
     const result = await getYCJobs(company.namespace);
+    return result;
     const apiJobIds = result.jobs.map((job) => String(job.id));
     const missingJobIds = apiJobIds.filter((id) => !jobIdsFromDB.has(id));
     t += 1;
@@ -467,7 +471,43 @@ export async function insertYCJobsDaily() {
   return { success: 'true' };
 }
 
-export async function getYCJobs(company) {
+export async function getYCJobs(companyName) {
+  const url = `https://www.ycombinator.com/companies/${companyName}/jobs`;
+
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+      "AppleWebKit/537.36 (KHTML, like Gecko) " +
+      "Chrome/124.0.0.0 Safari/537.36",
+  };
+
+  try {
+    // Fetch page
+    const response = await axios.get(url, { headers });
+
+    // Parse HTML
+    const $ = cheerio.load(response.data);
+
+    // Find div with embedded JSON
+    const rawData = $("div[data-page]").attr("data-page");
+
+    if (!rawData) {
+      throw new Error("Could not find data-page payload");
+    }
+
+    // Decode HTML entities
+    const decoded = he.decode(rawData);
+
+    // Parse JSON
+    const data = JSON.parse(decoded);
+
+    // Extract jobs
+    const jobs = data?.props?.jobPostings || [];
+    return jobs;
+  } catch (err) {
+    console.error("Error fetching YC jobs:", err.message);
+    throw err;
+  }
 }
 
 export async function processMissingYCForCompany(missingJobIds, company) {
