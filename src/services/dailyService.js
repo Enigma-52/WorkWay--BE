@@ -476,7 +476,7 @@ export async function insertYCJobsDaily() {
     t += 1;
     if (missingJobSlugs.length == 0) continue;
     const one = missingJobSlugs[0];
-    await processMissingYCForCompany([one], company.namespace);
+    await processMissingYCForCompany([one], company);
     await sleep(5000); // be nice to YC
     console.log('Inserted ', missingJobSlugs.length, ' jobs for ', company.namespace, ' ', t, '/', c);
   }
@@ -541,7 +541,7 @@ export async function processMissingYCForCompany(
 
           } catch (err) {
             console.error(
-              `Failed YC job ${jobSlug} for ${company}`,
+              `Failed YC job ${jobSlug} for ${company.namespace}`,
               err.message
             );
           }
@@ -562,8 +562,8 @@ export async function processMissingYCForCompany(
   }
 }
 
-async function fetchAndStoreYCJob(jobSlug , companySlug) {
-  const url = `https://www.ycombinator.com/companies/${companySlug}/jobs/${jobSlug}`;
+async function fetchAndStoreYCJob(jobSlug , company) {
+  const url = `https://www.ycombinator.com/companies/${company.namespace}/jobs/${jobSlug}`;
 
   const headers = {
     "User-Agent":
@@ -592,9 +592,8 @@ async function fetchAndStoreYCJob(jobSlug , companySlug) {
     // extract only job object
     const job = pageJson?.props?.job;
 
-    console.dir(job, { depth: null });
-
-    return job;
+    await storeYCJob(job,company);
+    return { success: true };
   } catch (err) {
     console.error(
       `Failed fetching YC job ${jobSlug}`,
@@ -603,4 +602,110 @@ async function fetchAndStoreYCJob(jobSlug , companySlug) {
 
     return null;
   }
+}
+
+export async function storeYCJob(job, company) {
+
+  const desc = await parseYCJobDescription(job.description); 
+
+  const [experience_level, employment_type, domain] = await Promise.all([
+    getExperienceLevel(job.title),
+    getEmploymentType(job.title),
+    getJobDomain(job.title),
+  ]);
+
+  const metdata = {
+    role : job.prettyRole,
+    salaryRange : job.salaryRange,
+    equityRange : job.equityRange,
+    minExperience : job.minExperience,
+    minSchoolYear : job.minSchoolYear,
+    visa : job.visa,
+    hiringManager : job.hiringManager,
+
+
+  }
+
+  const jobRow = {
+    company_id: company.id,
+    company : company.name,
+    slug : job.url.split("/jobs/")[1],
+    platform : 'ycombinator',
+    job_id : job.id,
+    title : job.title,
+    url : "https://www.workatastartup.com/jobs/" + job.id, 
+    description : JSON.stringify(desc),
+    experience_level,
+    employment_type,
+    domain,
+    location : job.location || 'Worldwide',
+    skills : JSON.stringify(job.skills || []),
+    metadata : JSON.stringify(metdata),
+    updated_at: new Date().toISOString(),
+  };
+  console.dir(jobRow);
+}
+
+export async function parseYCJobDescription(description) {
+  if (!description) return [];
+
+  const lines = description
+    .replace(/\r\n/g, "\n")
+    .split("\n");
+
+  const sections = [];
+
+  let currentSection = {
+    heading: "Overview",
+    content: [],
+  };
+
+  const pushCurrentSection = () => {
+    if (currentSection.content.length > 0) {
+      sections.push({
+        heading: currentSection.heading,
+        content: currentSection.content,
+      });
+    }
+  };
+
+  for (let rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line) continue;
+
+    /**
+     * Detect REAL section headings only:
+     *
+     * ✅ **The Role**
+     * ✅ **What You'll Do:**
+     *
+     * NOT:
+     * ❌ Since launch **$100M ARR**
+     */
+
+    const headingMatch = line.match(/^\*\*(.+?)\*\*$/);
+
+    if (headingMatch) {
+      pushCurrentSection();
+
+      currentSection = {
+        heading: headingMatch[1]
+          .replace(/:$/, "")
+          .trim(),
+        content: [],
+      };
+
+      continue;
+    }
+
+    // remove inline markdown bold
+    const cleaned = line.replace(/\*\*(.*?)\*\*/g, "$1");
+
+    currentSection.content.push(cleaned);
+  }
+
+  pushCurrentSection();
+
+  return sections;
 }
