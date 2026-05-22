@@ -460,12 +460,12 @@ export async function insertYCJobsDaily() {
     });
     const jobIdsFromDB = new Set(getJobsForCompanyFromDB.map((row) => row.job_id));
     const result = await getYCJobs(company.namespace);
-    return result;
-    const apiJobIds = result.jobs.map((job) => String(job.id));
+    const apiJobIds = result.map((job) => String(job.id));
     const missingJobIds = apiJobIds.filter((id) => !jobIdsFromDB.has(id));
     t += 1;
     if (missingJobIds.length == 0) continue;
-    await processMissingYCForCompany(missingJobIds, company);
+    await processMissingYCForCompany(missingJobIds[0], company);
+    await sleep(5000); // be nice to YC
     console.log('Inserted ', missingJobIds.length, ' jobs for ', company.namespace, ' ', t, '/', c);
   }
   return { success: 'true' };
@@ -510,5 +510,45 @@ export async function getYCJobs(companyName) {
   }
 }
 
-export async function processMissingYCForCompany(missingJobIds, company) {
+export async function processMissingYCForCompany(
+  missingJobIds,
+  company
+) {
+  // process in batches of 2
+  const BATCH_SIZE = 2;
+
+  for (let i = 0; i < missingJobIds.length; i += BATCH_SIZE) {
+    const batch = missingJobIds.slice(i, i + BATCH_SIZE);
+
+    try {
+      // run 2 jobs concurrently
+      await Promise.all(
+        batch.map(async (jobId) => {
+          try {
+            await fetchAndStoreYCJob(jobId, company);
+
+          } catch (err) {
+            console.error(
+              `Failed YC job ${jobId} for ${company.namespace}`,
+              err.message
+            );
+          }
+        })
+      );
+    } catch (err) {
+      console.error(
+        `Batch failed for ${company.namespace}`,
+        err.message
+      );
+    }
+
+    // wait 5s before next batch
+    if (i + BATCH_SIZE < missingJobIds.length) {
+      console.log("Sleeping for 5 seconds...");
+      await sleep(5000);
+    }
+  }
+}
+
+export async function fetchAndStoreYCJob(jobId, company) {
 }
