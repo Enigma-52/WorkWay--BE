@@ -90,7 +90,7 @@ See detailed request/response behavior in:
 
 The service exposes cron-style HTTP endpoints that:
 
-- load Greenhouse companies,
-- fetch jobs for Greenhouse companies already present in DB,
+- load Greenhouse, Ashby and YC companies,
+- fetch jobs for the companies already present in DB,
 - classify jobs (domain, level, employment type),
 - upsert jobs/companies into PostgreSQL.
