@@ -67,8 +67,13 @@ router.get('/daily_workable', async (req, res) => {
 
 router.get('/daily_yc', async (req, res) => {
   console.log('Cron job for yc triggered for daily');
-  const result = await insertYCJobsDaily();
-  res.json(result);
+  try {
+    const result = await insertYCJobsDaily();
+    res.json(result);
+  } catch (err) {
+    console.error('daily_yc route error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 export default router;

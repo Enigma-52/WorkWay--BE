@@ -451,34 +451,48 @@ export async function insertYCJobsDaily() {
     orderBy : 'id ASC',
   });
   const c = companies.length;
+  console.log(`Found ${c} YC companies in DB`);
+  if (c === 0) {
+    console.log('No YC companies found. Run /insert_yc_companies first.');
+    return { success: false, message: 'No YC companies in DB' };
+  }
   let t = 0;
   for (const company of companies) {
-    const getJobsForCompanyFromDB = await defaultPgDao.getAllRowsForChat({
-      tableName: 'jobs',
-      columns: ['slug'],
-      where: `company_id = ${company.id}`,
-    });
-    const jobSlugsFromDB = new Set(
-      getJobsForCompanyFromDB.map((row) => row.slug)
-    );
-
-    const result = await getYCJobs(company.namespace);
-
-    // extract slug from YC URL
-    const apiJobSlugs = result.map((job) => {
-      return job.url.split("/jobs/")[1];
-    });
-
-    // jobs not present in DB
-    const missingJobSlugs = apiJobSlugs.filter(
-      (slug) => !jobSlugsFromDB.has(slug)
-    );
     t += 1;
-    if (missingJobSlugs.length == 0) continue;
-    const one = missingJobSlugs[0];
-    await processMissingYCForCompany([one], company);
-    await sleep(5000); // be nice to YC
-    console.log('Inserted ', missingJobSlugs.length, ' jobs for ', company.namespace, ' ', t, '/', c);
+    try {
+      const getJobsForCompanyFromDB = await defaultPgDao.getAllRowsForChat({
+        tableName: 'jobs',
+        columns: ['slug'],
+        where: `company_id = ${company.id}`,
+      });
+      const jobSlugsFromDB = new Set(
+        getJobsForCompanyFromDB.map((row) => row.slug)
+      );
+
+      const result = await getYCJobs(company.namespace);
+
+      console.log(`Fetched ${result.length} YC jobs for ${company.namespace} (${t}/${c})`);
+
+      // extract slug from YC URL
+      const apiJobSlugs = result.map((job) => {
+        return job.url.split("/jobs/")[1];
+      });
+
+      // jobs not present in DB
+      const missingJobSlugs = apiJobSlugs.filter(
+        (slug) => !jobSlugsFromDB.has(slug)
+      );
+
+      if (missingJobSlugs.length == 0) continue;
+      console.log(`Missing slugs for ${company.namespace}:`, missingJobSlugs);
+      const one = missingJobSlugs[0];
+      await processMissingYCForCompany([one], company);
+      await sleep(5000); // be nice to YC
+      console.log('Inserted ', missingJobSlugs.length, ' jobs for ', company.namespace, ' ', t, '/', c);
+    } catch (err) {
+      console.error(`Failed processing YC company ${company.namespace} (${t}/${c}):`, err.message);
+      continue;
+    }
   }
   return { success: 'true' };
 }
@@ -648,7 +662,15 @@ async function resolveYCSkills(rawSkills) {
 export async function storeYCJob(job, company) {
 
   const desc = await parseYCJobDescription(job.description);
-  const skills = await resolveYCSkills(job.skills);
+  let skills = await resolveYCSkills(job.skills);
+
+  // If YC didn't provide skills, extract them from the job description
+  if (skills.length === 0 && desc.length > 0) {
+    const sectionText = desc
+      .map((s) => [s.heading, ...(s.content || [])].join(' '))
+      .join('\n');
+    skills = matchSkillsInText(sectionText);
+  }
 
   const [experience_level, employment_type, domain] = await Promise.all([
     getExperienceLevel(job.title),
@@ -663,7 +685,6 @@ export async function storeYCJob(job, company) {
     minExperience : job.minExperience,
     minSchoolYear : job.minSchoolYear,
     visa : job.visa,
-    hiringManager : job.hiringManager,
   }
 
   const jobRow = {

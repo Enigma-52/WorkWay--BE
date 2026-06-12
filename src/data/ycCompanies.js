@@ -1,3 +1,5 @@
 export const ycCompanies = [
-    "razorpay"
+    "razorpay",
+    "emergent",
+    "oximy"
 ];

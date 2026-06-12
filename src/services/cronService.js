@@ -964,9 +964,11 @@ export async function insertYCcompanies() {
     }
   }
 
+  if (results.length === 0) {
+    return { message: 'No YC companies fetched successfully', count: 0 };
+  }
   await insertCompaniesToDb(results);
   return { message: 'Inserted YC companies successfully', count: results.length };
-  // return results;
 }
 
 function buildCompanySlug(companyName) {
@@ -1034,7 +1036,7 @@ async function fetchYCCompanyDetails(companyName) {
     (company?.founders || []).map(async (founder) => ({
       name: founder?.full_name,
       title: founder?.title,
-      bio: await cleanText(founder?.founder_bio),
+      bio: founder?.founder_bio ? await cleanText(founder.founder_bio) : "",
       image: await imgUploadToR2Buffer(founder?.avatar_thumb_url, `${companyName.toLowerCase()}-founder-${await buildNameSlug(founder?.full_name)}`),
       social: {
         linkedin: founder?.linkedin_url,
@@ -1075,7 +1077,7 @@ async function fetchYCCompanyDetails(companyName) {
   const companyDetails = {
     name: company.name,
     slug: slug,
-    description: await cleanText(company.long_description) || "No description available",
+    description: company.long_description ? await cleanText(company.long_description) : "No description available",
     website: company.website,
     logo_url: companylogo || `https://img.logo.dev/${company.website}?token=pk_VwiQaQgWRqm2uv-prQBDXw&format=png&theme=dark&retina=true`,
     metadata,
