@@ -7,7 +7,7 @@ import {
   getEmploymentType,
   getJobDomain,
 } from '../utils/helper.js';
-import { matchSkillsInText } from '../data/skills.js';
+import { matchSkillsInText, slugify } from '../data/skills.js';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import he from 'he';
@@ -604,9 +604,51 @@ async function fetchAndStoreYCJob(jobSlug , company) {
   }
 }
 
+/**
+ * Resolve raw skill names (from YC) to { name, slug } objects.
+ * Looks up each name in the skills table; if not found, creates a new entry.
+ */
+async function resolveYCSkills(rawSkills) {
+  if (!Array.isArray(rawSkills) || rawSkills.length === 0) return [];
+
+  const resolved = [];
+  for (const raw of rawSkills) {
+    const name = typeof raw === 'string' ? raw.trim() : raw?.name?.trim?.();
+    if (!name) continue;
+
+    const slug = slugify(name);
+
+    // Check if skill exists in DB
+    const existing = await defaultPgDao.getQ({
+      sql: `SELECT name, slug FROM skills WHERE slug = $1 LIMIT 1`,
+      values: [slug],
+    });
+
+    if (existing.length > 0) {
+      resolved.push({ name: existing[0].name, slug: existing[0].slug });
+    } else {
+      // Insert new skill
+      try {
+        await defaultPgDao.getQ({
+          sql: `INSERT INTO skills (name, slug, skill_group_type, skill_group_name, skill_group_slug)
+                VALUES ($1, $2, 'other', 'Other', 'other')
+                ON CONFLICT DO NOTHING`,
+          values: [name, slug],
+        });
+      } catch (err) {
+        console.error(`Failed to insert skill "${name}":`, err.message);
+      }
+      resolved.push({ name, slug });
+    }
+  }
+
+  return resolved;
+}
+
 export async function storeYCJob(job, company) {
 
-  const desc = await parseYCJobDescription(job.description); 
+  const desc = await parseYCJobDescription(job.description);
+  const skills = await resolveYCSkills(job.skills);
 
   const [experience_level, employment_type, domain] = await Promise.all([
     getExperienceLevel(job.title),
@@ -622,8 +664,6 @@ export async function storeYCJob(job, company) {
     minSchoolYear : job.minSchoolYear,
     visa : job.visa,
     hiringManager : job.hiringManager,
-
-
   }
 
   const jobRow = {
@@ -633,17 +673,65 @@ export async function storeYCJob(job, company) {
     platform : 'ycombinator',
     job_id : job.id,
     title : job.title,
-    url : "https://www.workatastartup.com/jobs/" + job.id, 
+    url : "https://www.workatastartup.com/jobs/" + job.id,
     description : JSON.stringify(desc),
     experience_level,
     employment_type,
     domain,
     location : job.location || 'Worldwide',
-    skills : JSON.stringify(job.skills || []),
+    skills : JSON.stringify(skills),
     metadata : JSON.stringify(metdata),
     updated_at: new Date().toISOString(),
   };
-  console.dir(jobRow);
+  await insertYCjobRowIntoDB(jobRow);
+}
+
+export async function insertYCjobRowIntoDB(jobRow) {
+  const columnNames = [
+    'company',
+    'company_id',
+    'slug',
+    'platform',
+    'job_id',
+    'title',
+    'url',
+    'description',
+    'experience_level',
+    'employment_type',
+    'domain',
+    'location',
+    'skills',
+    'metadata',
+    'updated_at',
+  ];
+
+  const multiRowsColValuesList = [
+    columnNames.map((col) => jobRow[col]),
+  ];
+
+  try {
+    await defaultPgDao.insertOrUpdateMultipleObjs({
+      tableName: 'jobs',
+      columnNames,
+      multiRowsColValuesList,
+      conflictColumns: ['slug'],
+      updateColumnNames: [
+        'title',
+        'url',
+        'description',
+        'experience_level',
+        'employment_type',
+        'domain',
+        'location',
+        'skills',
+        'metadata',
+        'updated_at',
+      ],
+      returningCol: 'id',
+    });
+  } catch (error) {
+    console.error('Error inserting YC job into DB:', error.message);
+  }
 }
 
 export async function parseYCJobDescription(description) {
