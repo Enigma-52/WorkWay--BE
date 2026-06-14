@@ -484,7 +484,6 @@ export async function insertYCJobsDaily() {
       );
 
       if (missingJobSlugs.length == 0) continue;
-      console.log(`Missing slugs for ${company.namespace}:`, missingJobSlugs);
       const one = missingJobSlugs[0];
       await processMissingYCForCompany([one], company);
       await sleep(5000); // be nice to YC
@@ -793,15 +792,25 @@ export async function parseYCJobDescription(description) {
      * ❌ Since launch **$100M ARR**
      */
 
-    const headingMatch = line.match(/^\*\*(.+?)\*\*$/);
+    // Detect section headings:
+    // ✅ **The Role**
+    // ✅ ### What You'll Do:
+    // ✅ ## Requirements
+    // NOT: Since launch **$100M ARR**
+    const boldHeadingMatch = line.match(/^\*\*(.+?)\*\*$/);
+    const mdHeadingMatch = line.match(/^#{2,4}\s+(.+)$/);
 
-    if (headingMatch) {
+    if (boldHeadingMatch || mdHeadingMatch) {
       pushCurrentSection();
 
+      const raw = (boldHeadingMatch?.[1] || mdHeadingMatch?.[1] || "")
+        .replace(/\*\*(.*?)\*\*/g, "$1") // strip bold inside heading
+        .replace(/^\s*[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}]+\s*/u, "") // strip leading emoji
+        .replace(/:$/, "")
+        .trim();
+
       currentSection = {
-        heading: headingMatch[1]
-          .replace(/:$/, "")
-          .trim(),
+        heading: raw,
         content: [],
       };
 
@@ -809,7 +818,9 @@ export async function parseYCJobDescription(description) {
     }
 
     // remove inline markdown bold
-    const cleaned = line.replace(/\*\*(.*?)\*\*/g, "$1");
+    let cleaned = line.replace(/\*\*(.*?)\*\*/g, "$1");
+    // strip leading bullet markers (* or -)
+    cleaned = cleaned.replace(/^[*\-]\s+/, "");
 
     currentSection.content.push(cleaned);
   }
