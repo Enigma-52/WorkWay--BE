@@ -10,19 +10,31 @@ export async function getCompanyDetails(slug) {
       where: { slug },
     });
     const companyId = companyDetails ? companyDetails.id : null;
-    const jobDetails = await jobsDao.getCompanyJobFeed({ companyId });
-    const recentlyPostedJobs = await jobsDao.getCompanyRecentlyPostedJobs({ companyId });
+    const [recentlyPostedJobs, countResult, domainStats] = await Promise.all([
+      jobsDao.getCompanyRecentlyPostedJobs({ companyId }),
+      jobsDao.getQ({ sql: 'SELECT COUNT(*)::int AS total FROM jobs WHERE company_id = $1', values: [companyId] }),
+      jobsDao.getCompanyDomainStats({ companyId }),
+    ]);
     const enrichedCompanyDetails = {
       ...companyDetails,
-      jobListings: jobDetails,
-      recentlyPostedJobs: recentlyPostedJobs
+      totalJobs: countResult[0]?.total || 0,
+      recentlyPostedJobs: recentlyPostedJobs,
+      domainStats: domainStats,
     };
-    console.dir(enrichedCompanyDetails , { depth: null });
     return enrichedCompanyDetails;
   } catch (error) {
     console.error(`Failed to fetch details for company with slug ${slug}:`, error);
     throw error;
   }
+}
+
+export async function getCompanyJobs(slug, page, limit) {
+  const companyDetails = await defaultPgDao.getRow({
+    tableName: 'companies',
+    where: { slug },
+  });
+  if (!companyDetails) return { jobs: [], meta: { page: 1, limit, total: 0, total_pages: 0, has_next: false } };
+  return jobsDao.getCompanyJobsPaginated({ companyId: companyDetails.id, page, limit });
 }
 
 export async function getAllCompanies(params) {

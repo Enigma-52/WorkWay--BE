@@ -108,7 +108,27 @@ export const jobsQ = {
     FROM jobs j
     WHERE j.company_id = $1
     AND created_at >= NOW() - INTERVAL '3 days'
-    ORDER BY created_at DESC;
+    ORDER BY created_at DESC
+    LIMIT 5;
+  `,
+  COMPANY_DOMAIN_STATS: `
+    SELECT j.domain, COUNT(*)::int AS count
+    FROM jobs j
+    WHERE j.company_id = $1
+    GROUP BY j.domain
+    ORDER BY count DESC;
+  `,
+  COMPANY_JOBS_PAGINATED: `
+    SELECT ${JOB_FEED_COLS}
+    FROM jobs j
+    WHERE j.company_id = $1
+    ORDER BY j.domain ASC, j.created_at DESC
+    LIMIT $2 OFFSET $3;
+  `,
+  COMPANY_JOBS_COUNT: `
+    SELECT COUNT(*)::int AS total
+    FROM jobs j
+    WHERE j.company_id = $1;
   `,
   GET_SIMILAR_LOCATION_JOBS: `
     SELECT ${JOB_FEED_COLS}, c.logo_url AS company_logo_url, c.slug AS company_slug
@@ -161,6 +181,43 @@ class JobsDao extends PostgresDao {
       sql: jobsQ.COMPANY_FEED,
       values: [companyId],
     });
+  }
+
+  async getCompanyDomainStats({ companyId }) {
+    return this.getQ({
+      sql: jobsQ.COMPANY_DOMAIN_STATS,
+      values: [companyId],
+    });
+  }
+
+  async getCompanyJobsPaginated({ companyId, page = 1, limit = 5 }) {
+    const safeLimit = Math.min(Math.max(1, Number(limit) || 5), 20);
+    const safePage = Math.max(1, Number(page) || 1);
+    const offset = (safePage - 1) * safeLimit;
+
+    const [jobs, countResult] = await Promise.all([
+      this.getQ({
+        sql: jobsQ.COMPANY_JOBS_PAGINATED,
+        values: [companyId, safeLimit, offset],
+      }),
+      this.getQ({
+        sql: jobsQ.COMPANY_JOBS_COUNT,
+        values: [companyId],
+      }),
+    ]);
+
+    const total = countResult[0]?.total || 0;
+
+    return {
+      jobs,
+      meta: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        total_pages: Math.ceil(total / safeLimit),
+        has_next: safePage * safeLimit < total,
+      },
+    };
   }
 
   async getSingleJob({ slug }) {

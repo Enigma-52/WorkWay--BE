@@ -4,6 +4,7 @@ import {
   getCompanyOverview,
   getAllCompanies,
   generateCompanyEmbeddings,
+  getCompanyJobs,
 } from '../services/companyService.js';
 
 const router = express.Router();
@@ -35,6 +36,18 @@ router.get('/', async (req, res) => {
       error: 'Internal server error',
       detail: err.message,
     });
+  }
+});
+
+router.get('/jobs', async (req, res) => {
+  try {
+    const { slug, page = '1', limit = '5' } = req.query;
+    if (!slug) return res.status(400).json({ error: 'slug is required' });
+    const result = await getCompanyJobs(slug, Number(page), Number(limit));
+    res.json(result);
+  } catch (err) {
+    console.error('GET /api/company/jobs failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
