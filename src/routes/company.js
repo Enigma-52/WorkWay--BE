@@ -41,9 +41,9 @@ router.get('/', async (req, res) => {
 
 router.get('/jobs', async (req, res) => {
   try {
-    const { slug, page = '1', limit = '5' } = req.query;
-    if (!slug) return res.status(400).json({ error: 'slug is required' });
-    const result = await getCompanyJobs(slug, Number(page), Number(limit));
+    const { slug, domain, page = '1', limit = '5' } = req.query;
+    if (!slug || !domain) return res.status(400).json({ error: 'slug and domain are required' });
+    const result = await getCompanyJobs(slug, domain, Number(page), Number(limit));
     res.json(result);
   } catch (err) {
     console.error('GET /api/company/jobs failed:', err);

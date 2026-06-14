@@ -28,13 +28,13 @@ export async function getCompanyDetails(slug) {
   }
 }
 
-export async function getCompanyJobs(slug, page, limit) {
+export async function getCompanyJobs(slug, domain, page, limit) {
   const companyDetails = await defaultPgDao.getRow({
     tableName: 'companies',
     where: { slug },
   });
   if (!companyDetails) return { jobs: [], meta: { page: 1, limit, total: 0, total_pages: 0, has_next: false } };
-  return jobsDao.getCompanyJobsPaginated({ companyId: companyDetails.id, page, limit });
+  return jobsDao.getCompanyJobsByDomain({ companyId: companyDetails.id, domain, page, limit });
 }
 
 export async function getAllCompanies(params) {
