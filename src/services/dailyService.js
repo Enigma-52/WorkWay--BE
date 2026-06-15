@@ -203,7 +203,7 @@ async function fetchWorkableJsonWithRetry(url, options = {}, retries = WORKABLE_
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        'User-Agent': 'WorkWayBot/1.0 (+https://workway.dev; jobs-ingestion)',
+        'User-Agent': 'WorkWayBot/1.0 (+https://www.workway.dev; jobs-ingestion)',
         ...(options.headers || {}),
       },
       signal: controller.signal,
@@ -444,6 +444,9 @@ export async function processMissingWorkableJobsForCompany(missingJobIds, compan
 
 }
 
+const YC_COMPANY_DELAY_MS = 8000;
+const YC_JOB_DELAY_MS = 5000;
+
 export async function insertYCJobsDaily() {
   const companies = await defaultPgDao.getAllRows({
     tableName: 'companies',
@@ -451,14 +454,14 @@ export async function insertYCJobsDaily() {
     orderBy : 'id ASC',
   });
   const c = companies.length;
-  console.log(`Found ${c} YC companies in DB`);
+  console.log(`[YC Jobs] Found ${c} YC companies in DB`);
   if (c === 0) {
-    console.log('No YC companies found. Run /insert_yc_companies first.');
+    console.log('[YC Jobs] No YC companies found. Run /insert_yc_companies first.');
     return { success: false, message: 'No YC companies in DB' };
   }
-  let t = 0;
-  for (const company of companies) {
-    t += 1;
+
+  for (let t = 0; t < c; t++) {
+    const company = companies[t];
     try {
       const getJobsForCompanyFromDB = await defaultPgDao.getAllRowsForChat({
         tableName: 'jobs',
@@ -469,41 +472,42 @@ export async function insertYCJobsDaily() {
         getJobsForCompanyFromDB.map((row) => row.slug)
       );
 
+      console.log(`[YC Jobs] Fetching job list for ${company.namespace} (${t + 1}/${c})...`);
       const result = await getYCJobs(company.namespace);
+      console.log(`[YC Jobs] Found ${result.length} jobs on YC for ${company.namespace}`);
 
-      console.log(`Fetched ${result.length} YC jobs for ${company.namespace} (${t}/${c})`);
-
-      // extract slug from YC URL
-      const apiJobSlugs = result.map((job) => {
-        return job.url.split("/jobs/")[1];
-      });
-
-      // jobs not present in DB
+      const apiJobSlugs = result.map((job) => job.url.split("/jobs/")[1]);
       const missingJobSlugs = apiJobSlugs.filter(
         (slug) => !jobSlugsFromDB.has(slug)
       );
 
-      if (missingJobSlugs.length == 0) continue;
-      const one = missingJobSlugs[0];
-      await processMissingYCForCompany([one], company);
-      await sleep(5000); // be nice to YC
-      console.log('Inserted ', missingJobSlugs.length, ' jobs for ', company.namespace, ' ', t, '/', c);
+      if (missingJobSlugs.length === 0) {
+        console.log(`[YC Jobs] No new jobs for ${company.namespace}`);
+      } else {
+        console.log(`[YC Jobs] ${missingJobSlugs.length} new jobs to insert for ${company.namespace}`);
+        await processMissingYCForCompany(missingJobSlugs, company);
+        console.log(`[YC Jobs] Inserted ${missingJobSlugs.length} jobs for ${company.namespace}`);
+      }
     } catch (err) {
-      console.error(`Failed processing YC company ${company.namespace} (${t}/${c}):`, err.message);
-      continue;
+      console.error(`[YC Jobs] Failed ${company.namespace} (${t + 1}/${c}):`, err.message);
+    }
+
+    // Respectful delay between companies
+    if (t < c - 1) {
+      console.log(`[YC Jobs] Waiting ${YC_COMPANY_DELAY_MS / 1000}s before next company...`);
+      await sleep(YC_COMPANY_DELAY_MS);
     }
   }
   return { success: 'true' };
 }
 
+const YC_USER_AGENT = "WorkWayBot/1.0 (+https://www.workway.dev; jobs-ingestion)";
+
 export async function getYCJobs(companyName) {
   const url = `https://www.ycombinator.com/companies/${companyName}/jobs`;
 
   const headers = {
-    "User-Agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
-      "AppleWebKit/537.36 (KHTML, like Gecko) " +
-      "Chrome/124.0.0.0 Safari/537.36",
+    "User-Agent": YC_USER_AGENT,
   };
 
   try {
@@ -539,38 +543,19 @@ export async function processMissingYCForCompany(
   missingJobSlugs,
   company
 ) {
-  // process in batches of 2
-  const BATCH_SIZE = 2;
-
-  for (let i = 0; i < missingJobSlugs.length; i += BATCH_SIZE) {
-    const batch = missingJobSlugs.slice(i, i + BATCH_SIZE);
-
+  for (let i = 0; i < missingJobSlugs.length; i++) {
+    const jobSlug = missingJobSlugs[i];
     try {
-      // run 2 jobs concurrently
-      await Promise.all(
-        batch.map(async (jobSlug) => {
-          try {
-            await fetchAndStoreYCJob(jobSlug, company);
-
-          } catch (err) {
-            console.error(
-              `Failed YC job ${jobSlug} for ${company.namespace}`,
-              err.message
-            );
-          }
-        })
-      );
+      console.log(`[YC Jobs] Fetching job ${i + 1}/${missingJobSlugs.length}: ${jobSlug}`);
+      await fetchAndStoreYCJob(jobSlug, company);
+      console.log(`[YC Jobs] Stored job ${jobSlug}`);
     } catch (err) {
-      console.error(
-        `Batch failed for ${company.namespace}`,
-        err.message
-      );
+      console.error(`[YC Jobs] Failed job ${jobSlug} for ${company.namespace}:`, err.message);
     }
 
-    // wait 5s before next batch
-    if (i + BATCH_SIZE < missingJobSlugs.length) {
-      console.log("Sleeping for 5 seconds...");
-      await sleep(5000);
+    // Respectful delay between each job fetch
+    if (i < missingJobSlugs.length - 1) {
+      await sleep(YC_JOB_DELAY_MS);
     }
   }
 }
@@ -579,10 +564,7 @@ async function fetchAndStoreYCJob(jobSlug , company) {
   const url = `https://www.ycombinator.com/companies/${company.namespace}/jobs/${jobSlug}`;
 
   const headers = {
-    "User-Agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
-      "AppleWebKit/537.36 (KHTML, like Gecko) " +
-      "Chrome/124.0.0.0 Safari/537.36",
+    "User-Agent": YC_USER_AGENT,
   };
 
   try {

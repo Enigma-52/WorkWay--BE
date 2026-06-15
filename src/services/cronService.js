@@ -947,20 +947,28 @@ async function extractDomain(url) {
 
 const YC_BASE_URL = "https://www.ycombinator.com";
 
+const YC_COMPANY_DELAY_MS = 5000;
+
 export async function insertYCcompanies() {
   const uniqueCompanies = [...new Set(ycCompanies.filter(Boolean))];
-
+  const total = uniqueCompanies.length;
   const results = [];
 
-  for (const companyName of uniqueCompanies) {
+  for (let i = 0; i < total; i++) {
+    const companyName = uniqueCompanies[i];
     try {
-      console.log(`Fetching: ${companyName}`);
-
+      console.log(`[YC Companies] Fetching ${companyName} (${i + 1}/${total})`);
       const companyData = await fetchYCCompanyDetails(companyName);
-
       results.push(companyData);
+      console.log(`[YC Companies] Done ${companyName}`);
     } catch (error) {
-      console.error(`Failed: ${companyName}`, error.message);
+      console.error(`[YC Companies] Failed ${companyName}:`, error.message);
+    }
+
+    // Respectful delay between each company fetch
+    if (i < total - 1) {
+      console.log(`[YC Companies] Waiting ${YC_COMPANY_DELAY_MS / 1000}s before next...`);
+      await sleep(YC_COMPANY_DELAY_MS);
     }
   }
 
@@ -1005,16 +1013,15 @@ async function cleanText(text) {
     .trim();
 }
 
+const YC_USER_AGENT = "WorkWayBot/1.0 (+https://www.workway.dev; jobs-ingestion)";
+
 async function fetchYCCompanyDetails(companyName) {
 
   const url = `${YC_BASE_URL}/companies/${companyName.toLowerCase()}`;
 
   const response = await axios.get(url, {
     headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
-        "AppleWebKit/537.36 (KHTML, like Gecko) " +
-        "Chrome/124.0.0.0 Safari/537.36",
+      "User-Agent": YC_USER_AGENT,
     },
   });
 
@@ -1032,18 +1039,22 @@ async function fetchYCCompanyDetails(companyName) {
 
   const banner_logo = await imgUploadToR2Buffer(company?.logo_url , `${companyName.toLowerCase()}-banner-logo`)
 
-  const founders = await Promise.all(
-    (company?.founders || []).map(async (founder) => ({
+  const founders = [];
+  for (const founder of (company?.founders || [])) {
+    const nameSlug = await buildNameSlug(founder?.full_name);
+    const image = await imgUploadToR2Buffer(founder?.avatar_thumb_url, `${companyName.toLowerCase()}-founder-${nameSlug}`);
+    founders.push({
       name: founder?.full_name,
       title: founder?.title,
       bio: founder?.founder_bio ? await cleanText(founder.founder_bio) : "",
-      image: await imgUploadToR2Buffer(founder?.avatar_thumb_url, `${companyName.toLowerCase()}-founder-${await buildNameSlug(founder?.full_name)}`),
+      image,
       social: {
         linkedin: founder?.linkedin_url,
         twitter: founder?.twitter_url,
       },
-    }))
-  );
+    });
+    await sleep(1000);
+  }
   
   let avatar_thumb_url = company?.primary_group_partner?.avatar_thumb_url;
   let avatar_url = await imgUploadToR2Buffer(avatar_thumb_url, `${companyName.toLowerCase()}-partner-avatar`) ;
