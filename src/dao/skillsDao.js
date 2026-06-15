@@ -2,43 +2,53 @@ import PostgresDao from './dao.js';
 
 export const skillsQ = {
   GET_ALL_SKILLS: `
-    WITH skills_with_counts AS (
-  SELECT
-    s.name AS skill,
-    s.slug,
-    s.skill_group_name AS category,
-    s.skill_group_slug AS category_slug,
-    s.skill_group_type AS category_type,
-    (SELECT COUNT(*) FROM jobs j WHERE j.skills @> jsonb_build_array(jsonb_build_object('name', s.name)))::int AS job_count
-  FROM skills s
-),
+    WITH job_skills AS (
+      SELECT (sk->>'name') AS skill_name
+      FROM jobs j, jsonb_array_elements(j.skills) AS sk
+    ),
 
-category_agg AS (
-  SELECT
-    category,
-    COUNT(*) AS skill_count
-  FROM skills_with_counts
-  GROUP BY category
-),
+    skill_counts AS (
+      SELECT skill_name, COUNT(*)::int AS job_count
+      FROM job_skills
+      GROUP BY skill_name
+    ),
 
-stats AS (
-  SELECT
-    (SELECT COUNT(*) FROM skills) AS total_skills,
-    (SELECT COUNT(*) FROM jobs) AS total_jobs,
-    (SELECT COUNT(DISTINCT skill_group_name) FROM skills) AS total_categories
-)
+    skills_with_counts AS (
+      SELECT
+        s.name AS skill,
+        s.slug,
+        s.skill_group_name AS category,
+        s.skill_group_slug AS category_slug,
+        s.skill_group_type AS category_type,
+        COALESCE(sc.job_count, 0) AS job_count
+      FROM skills s
+      LEFT JOIN skill_counts sc ON sc.skill_name = s.name
+    ),
 
-SELECT json_build_object(
-  'stats', (SELECT row_to_json(stats) FROM stats),
-  'categories', (
-    SELECT json_agg(category_agg ORDER BY category)
-    FROM category_agg
-  ),
-  'skills', (
-    SELECT json_agg(skills_with_counts ORDER BY job_count DESC)
-    FROM skills_with_counts
-  )
-) AS result;
+    category_agg AS (
+      SELECT category, COUNT(*) AS skill_count
+      FROM skills_with_counts
+      GROUP BY category
+    ),
+
+    stats AS (
+      SELECT
+        (SELECT COUNT(*) FROM skills) AS total_skills,
+        (SELECT COUNT(*) FROM jobs) AS total_jobs,
+        (SELECT COUNT(DISTINCT skill_group_name) FROM skills) AS total_categories
+    )
+
+    SELECT json_build_object(
+      'stats', (SELECT row_to_json(stats) FROM stats),
+      'categories', (
+        SELECT json_agg(category_agg ORDER BY category)
+        FROM category_agg
+      ),
+      'skills', (
+        SELECT json_agg(skills_with_counts ORDER BY job_count DESC)
+        FROM skills_with_counts
+      )
+    ) AS result;
   `,
   GET_SKILL_BY_SLUG: `
     SELECT name, slug FROM skills where slug = $1 limit 1;

@@ -3,51 +3,34 @@ import PostgresDao from './dao.js';
 export const companyQ = {
   ALL_COMPANY_LIST: `
     SELECT
-  c.id,
-  c.slug,
-  c.name,
-  c.logo_url,
-  c.description,
-  c.website,
-
-  COUNT(j.id)::int AS jobs_open_count,
-  (COUNT(j.id) > 0) AS is_actively_hiring
-
-FROM companies c
-LEFT JOIN jobs j
-  ON j.company_id = c.id
-
-WHERE
-  (COALESCE($1, '') = '' OR c.name ILIKE '%' || $1 || '%')
-  AND (COALESCE($2, 'ALL') = 'ALL' OR c.name ILIKE $2 || '%')
-
-GROUP BY
-  c.id, c.slug, c.name, c.logo_url, c.description
-
-HAVING
-  ($3::boolean = false OR COUNT(j.id) > 0)
-
-ORDER BY
-  (COUNT(j.id) > 0) DESC,
-  COUNT(j.id) DESC,
-  c.name ASC
-
-LIMIT $4 OFFSET $5;
+      c.id,
+      c.slug,
+      c.name,
+      c.logo_url,
+      c.description,
+      c.website,
+      (SELECT COUNT(*)::int FROM jobs j WHERE j.company_id = c.id) AS jobs_open_count,
+      EXISTS(SELECT 1 FROM jobs j WHERE j.company_id = c.id) AS is_actively_hiring
+    FROM companies c
+    WHERE
+      (COALESCE($1, '') = '' OR c.name ILIKE '%' || $1 || '%')
+      AND (COALESCE($2, 'ALL') = 'ALL' OR c.name ILIKE $2 || '%')
+      AND ($3::boolean = false OR EXISTS(SELECT 1 FROM jobs j WHERE j.company_id = c.id))
+      AND (COALESCE($6, '') = '' OR c.platform = $6)
+    ORDER BY
+      (SELECT COUNT(*) FROM jobs j WHERE j.company_id = c.id AND j.created_at >= NOW() - INTERVAL '7 days') DESC,
+      (SELECT COUNT(*) FROM jobs j WHERE j.company_id = c.id) DESC,
+      c.name ASC
+    LIMIT $4 OFFSET $5;
   `,
   ALL_COMPANY_COUNT: `
     SELECT COUNT(*)::int AS total
-FROM (
-  SELECT c.id
-  FROM companies c
-  LEFT JOIN jobs j
-    ON j.company_id = c.id
-  WHERE
-    (COALESCE($1, '') = '' OR c.name ILIKE '%' || $1 || '%')
-    AND (COALESCE($2, 'ALL') = 'ALL' OR c.name ILIKE $2 || '%')
-  GROUP BY c.id
-  HAVING
-    ($3::boolean = false OR COUNT(j.id) > 0)
-) sub;
+    FROM companies c
+    WHERE
+      (COALESCE($1, '') = '' OR c.name ILIKE '%' || $1 || '%')
+      AND (COALESCE($2, 'ALL') = 'ALL' OR c.name ILIKE $2 || '%')
+      AND ($3::boolean = false OR EXISTS(SELECT 1 FROM jobs j WHERE j.company_id = c.id))
+      AND (COALESCE($4, '') = '' OR c.platform = $4);
   `,
   OVERVIEW_STATS: `
     SELECT
@@ -89,14 +72,9 @@ FROM (
     c.website,
     true AS is_actively_hiring
   FROM companies c
-  LEFT JOIN jobs j
-    ON j.company_id = c.id
-  GROUP BY
-    c.id, c.slug, c.name, c.logo_url, c.description, c.website
-  HAVING
-    COUNT(j.id) > 0
+  WHERE EXISTS(SELECT 1 FROM jobs j WHERE j.company_id = c.id)
   ORDER BY
-    COUNT(j.id) DESC
+    (SELECT COUNT(*) FROM jobs j WHERE j.company_id = c.id) DESC
   LIMIT 6;
 `,
   GET_COMPANIES_WITHOUT_EMBEDDINGS: `
@@ -121,7 +99,7 @@ class CompanyDao extends PostgresDao {
     super('companies');
   }
 
-  async getAllCompanies({ q, page, limit, letter, hiring }) {
+  async getAllCompanies({ q, page, limit, letter, hiring, platform }) {
     const pageNum = Math.max(Number(page) || 1, 1);
     const limitNum = Math.min(Math.max(Number(limit) || 20, 1), 50);
     const offset = (pageNum - 1) * limitNum;
@@ -129,18 +107,20 @@ class CompanyDao extends PostgresDao {
     const search = q || '';
     const letterFilter = letter || 'ALL';
     const hiringOnly = !!hiring;
+    const platformFilter = platform || '';
 
-    const listValues = [search, letterFilter, hiringOnly, limitNum, offset];
+    const listValues = [search, letterFilter, hiringOnly, limitNum, offset, platformFilter];
 
-    const listResult = await this.getQ({
-      sql: companyQ.ALL_COMPANY_LIST,
-      values: listValues,
-    });
-
-    const countResult = await this.getQ({
-      sql: companyQ.ALL_COMPANY_COUNT,
-      values: [search, letterFilter, hiringOnly],
-    });
+    const [listResult, countResult] = await Promise.all([
+      this.getQ({
+        sql: companyQ.ALL_COMPANY_LIST,
+        values: listValues,
+      }),
+      this.getQ({
+        sql: companyQ.ALL_COMPANY_COUNT,
+        values: [search, letterFilter, hiringOnly, platformFilter],
+      }),
+    ]);
 
     const total = countResult?.[0]?.total ?? 0;
 

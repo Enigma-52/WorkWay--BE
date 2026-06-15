@@ -17,7 +17,7 @@ router.get('/details', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const { q = '', page = '1', limit = '20', letter = 'ALL', hiring = 'false' } = req.query;
+    const { q = '', page = '1', limit = '20', letter = 'ALL', hiring = 'false', platform = '' } = req.query;
 
     const params = {
       q,
@@ -25,6 +25,7 @@ router.get('/', async (req, res) => {
       limit: Number(limit),
       letter,
       hiring: hiring === 'true',
+      platform,
     };
 
     const result = await getAllCompanies(params);

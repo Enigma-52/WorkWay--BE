@@ -29,6 +29,8 @@ export async function initPg() {
   const client = await pool.connect();
   try {
     await client.query('SELECT 1');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_jobs_company_id ON jobs (company_id)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_jobs_skills_gin ON jobs USING GIN (skills)');
   } finally {
     client.release();
   }
