@@ -17,6 +17,7 @@ import savedJobsRoutes from './savedJobs.js';
 import alertsRoutes from './alerts.js';
 import seoRoutes from './seo.js';
 import scriptRoutes from './script.js'
+import talentProfilesRoutes from './talentProfiles.js';
 
 const router = express.Router();
 
@@ -35,6 +36,7 @@ router.use('/applications', applicationsRoutes);
 router.use('/saved-jobs', savedJobsRoutes);
 router.use('/alerts', alertsRoutes);
 router.use('/scripts' , scriptRoutes)
+router.use('/talent-profiles', talentProfilesRoutes);
 
 router.use('/seo', seoRoutes);
 router.use('/', sitemapRoutes); // backward compatibility

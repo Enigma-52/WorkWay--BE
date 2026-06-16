@@ -414,3 +414,16 @@ export async function imgUploadToR2Buffer(imageUrl, namespace) {
 
   return `${CDN_BASE}/${key}`;
 }
+
+export async function uploadBufferToR2(buffer, key, contentType) {
+  await R2Client.send(
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+      CacheControl: "public, max-age=31536000, immutable",
+    })
+  );
+  return `${CDN_BASE}/${key}`;
+}
