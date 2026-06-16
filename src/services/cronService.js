@@ -947,22 +947,33 @@ async function extractDomain(url) {
 
 const YC_BASE_URL = "https://www.ycombinator.com";
 
-const YC_COMPANY_DELAY_MS = 5000;
+const YC_COMPANY_DELAY_MS = 2000;
 
 export async function insertYCcompanies() {
+  const BATCH_SIZE = 10;
   const uniqueCompanies = [...new Set(ycCompanies.filter(Boolean))];
   const total = uniqueCompanies.length;
-  const results = [];
+  let batch = [];
+  let totalInserted = 0;
 
   for (let i = 0; i < total; i++) {
     const companyName = uniqueCompanies[i];
     try {
       console.log(`[YC Companies] Fetching ${companyName} (${i + 1}/${total})`);
       const companyData = await fetchYCCompanyDetails(companyName);
-      results.push(companyData);
-      console.log(`[YC Companies] Done ${companyName}`);
+      if (companyData) {
+        batch.push(companyData);
+        console.log(`[YC Companies] Done ${companyName}`);
+      }
     } catch (error) {
       console.error(`[YC Companies] Failed ${companyName}:`, error.message);
+    }
+
+    if (batch.length >= BATCH_SIZE) {
+      console.log(`[YC Companies] Inserting batch of ${batch.length} companies...`);
+      await insertCompaniesToDb(batch);
+      totalInserted += batch.length;
+      batch = [];
     }
 
     // Respectful delay between each company fetch
@@ -972,11 +983,17 @@ export async function insertYCcompanies() {
     }
   }
 
-  if (results.length === 0) {
+  // Insert remaining companies
+  if (batch.length > 0) {
+    console.log(`[YC Companies] Inserting final batch of ${batch.length} companies...`);
+    await insertCompaniesToDb(batch);
+    totalInserted += batch.length;
+  }
+
+  if (totalInserted === 0) {
     return { message: 'No YC companies fetched successfully', count: 0 };
   }
-  await insertCompaniesToDb(results);
-  return { message: 'Inserted YC companies successfully', count: results.length };
+  return { message: 'Inserted YC companies successfully', count: totalInserted };
 }
 
 function buildCompanySlug(companyName) {
@@ -1035,7 +1052,17 @@ async function fetchYCCompanyDetails(companyName) {
 
   const parsed = JSON.parse(he.decode(rawPayload));
   const company = parsed?.props?.company || {};
+  const jobPostings = parsed?.props?.jobPostings || [];
 
+  if (company?.ycdc_status === "Inactive") {
+    console.log(`[YC Companies] Skipping ${companyName}: ycdc_status is Inactive`);
+    return null;
+  }
+
+  if (jobPostings.length === 0) {
+    console.log(`[YC Companies] Skipping ${companyName}: no open jobs`);
+    return null;
+  }
 
   const banner_logo = await imgUploadToR2Buffer(company?.logo_url , `${companyName.toLowerCase()}-banner-logo`)
 

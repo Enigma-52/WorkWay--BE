@@ -444,13 +444,13 @@ export async function processMissingWorkableJobsForCompany(missingJobIds, compan
 
 }
 
-const YC_COMPANY_DELAY_MS = 8000;
-const YC_JOB_DELAY_MS = 5000;
+const YC_COMPANY_DELAY_MS = 4000;
+const YC_JOB_DELAY_MS = 4000;
 
 export async function insertYCJobsDaily() {
   const companies = await defaultPgDao.getAllRows({
     tableName: 'companies',
-    where: "platform = 'ycombinator'",
+    where: "platform = 'ycombinator' AND name = 'Craftwork'",
     orderBy : 'id ASC',
   });
   const c = companies.length;
