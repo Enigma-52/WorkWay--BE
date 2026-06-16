@@ -450,8 +450,9 @@ const YC_JOB_DELAY_MS = 4000;
 export async function insertYCJobsDaily() {
   const companies = await defaultPgDao.getAllRows({
     tableName: 'companies',
-    where: "platform = 'ycombinator' AND name = 'Craftwork'",
+    where: "platform = 'ycombinator'",
     orderBy : 'id ASC',
+    limit : 10
   });
   const c = companies.length;
   console.log(`[YC Jobs] Found ${c} YC companies in DB`);
