@@ -452,7 +452,6 @@ export async function insertYCJobsDaily() {
     tableName: 'companies',
     where: "platform = 'ycombinator'",
     orderBy : 'id ASC',
-    limit : 10
   });
   const c = companies.length;
   console.log(`[YC Jobs] Found ${c} YC companies in DB`);

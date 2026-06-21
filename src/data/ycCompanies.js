@@ -1,2 +1,1 @@
-export const ycCompanies = [
-];
+export const ycCompanies = [];
