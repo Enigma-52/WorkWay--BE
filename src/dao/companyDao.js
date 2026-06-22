@@ -2,6 +2,14 @@ import PostgresDao from './dao.js';
 
 export const companyQ = {
   ALL_COMPANY_LIST: `
+    WITH job_counts AS (
+      SELECT
+        company_id,
+        COUNT(*)::int AS total_jobs,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int AS recent_jobs
+      FROM jobs
+      GROUP BY company_id
+    )
     SELECT
       c.id,
       c.slug,
@@ -9,17 +17,18 @@ export const companyQ = {
       c.logo_url,
       c.description,
       c.website,
-      (SELECT COUNT(*)::int FROM jobs j WHERE j.company_id = c.id) AS jobs_open_count,
-      EXISTS(SELECT 1 FROM jobs j WHERE j.company_id = c.id) AS is_actively_hiring
+      COALESCE(jc.total_jobs, 0) AS jobs_open_count,
+      (COALESCE(jc.total_jobs, 0) > 0) AS is_actively_hiring
     FROM companies c
+    LEFT JOIN job_counts jc ON jc.company_id = c.id
     WHERE
       (COALESCE($1, '') = '' OR c.name ILIKE '%' || $1 || '%')
       AND (COALESCE($2, 'ALL') = 'ALL' OR c.name ILIKE $2 || '%')
-      AND ($3::boolean = false OR EXISTS(SELECT 1 FROM jobs j WHERE j.company_id = c.id))
+      AND ($3::boolean = false OR COALESCE(jc.total_jobs, 0) > 0)
       AND (COALESCE($6, '') = '' OR c.platform = $6)
     ORDER BY
-      (SELECT COUNT(*) FROM jobs j WHERE j.company_id = c.id AND j.created_at >= NOW() - INTERVAL '7 days') DESC,
-      (SELECT COUNT(*) FROM jobs j WHERE j.company_id = c.id) DESC,
+      COALESCE(jc.recent_jobs, 0) DESC,
+      COALESCE(jc.total_jobs, 0) DESC,
       c.name ASC
     LIMIT $4 OFFSET $5;
   `,
@@ -72,9 +81,12 @@ export const companyQ = {
     c.website,
     true AS is_actively_hiring
   FROM companies c
-  WHERE EXISTS(SELECT 1 FROM jobs j WHERE j.company_id = c.id)
-  ORDER BY
-    (SELECT COUNT(*) FROM jobs j WHERE j.company_id = c.id) DESC
+  INNER JOIN (
+    SELECT company_id, COUNT(*)::int AS job_count
+    FROM jobs
+    GROUP BY company_id
+  ) jc ON jc.company_id = c.id
+  ORDER BY jc.job_count DESC
   LIMIT 6;
 `,
   GET_COMPANIES_WITHOUT_EMBEDDINGS: `

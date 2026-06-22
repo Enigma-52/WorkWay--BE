@@ -46,26 +46,24 @@ export async function getDomainJobDetails(slug, page, employment_type, employmen
   //     orderBy: 'created_at DESC',
   //   });
 
-  // ✅ 3. Transform descriptions (unchanged)
-  const transformedJobs = await Promise.all(
-    getJobsByDomain.map(async (job) => {
-      let pickedSection = null;
+  // Transform descriptions
+  const transformedJobs = getJobsByDomain.map((job) => {
+    let pickedSection = null;
 
-      try {
-        const desc =
-          typeof job.description === 'string' ? JSON.parse(job.description) : job.description;
+    try {
+      const desc =
+        typeof job.description === 'string' ? JSON.parse(job.description) : job.description;
 
-        pickedSection = await pickRelevantDescriptionSections(desc);
-      } catch (e) {
-        pickedSection = null;
-      }
+      pickedSection = pickRelevantDescriptionSections(desc);
+    } catch (e) {
+      pickedSection = null;
+    }
 
-      return {
-        ...job,
-        description: pickedSection ? [pickedSection] : [],
-      };
-    })
-  );
+    return {
+      ...job,
+      description: pickedSection ? [pickedSection] : [],
+    };
+  });
 
   const totalPages = Math.ceil(total / LIMIT);
 
@@ -111,19 +109,19 @@ export async function getSkillJobDetails(slug,
 
     const LIMIT = 20;
     const OFFSET = (page - 1) * LIMIT;
+    const skillJsonb = JSON.stringify([{ name: skill[0].name }]);
     const [countRows, getJobsBySkill] = await Promise.all([
       runPgStatement({
         query: `
           SELECT COUNT(*)::int AS count
           FROM jobs
-          CROSS JOIN LATERAL jsonb_array_elements(jobs.skills) AS skill_elem
-          WHERE skill_elem->>'name' = $1
+          WHERE skills @> $1::jsonb
             AND ($2::text IS NULL OR employment_type = $2)
             AND ($3::text IS NULL OR experience_level = $3)
             AND ($4::text IS NULL OR location ILIKE '%' || $4 || '%')
         `,
         values: [
-          skill[0].name,
+          skillJsonb,
           employment_type === 'all' ? null : employment_type,
           employment_level === 'all' ? null : employment_level,
           location === 'all' ? null : location,
@@ -132,25 +130,23 @@ export async function getSkillJobDetails(slug,
       skillsDao.getJobsBySkill(skill[0].name, LIMIT, OFFSET, employment_type, employment_level, location),
     ]);
     const total = countRows[0]?.count || 0;
-    const transformedJobs = await Promise.all(
-      getJobsBySkill.map(async (job) => {
-        let pickedSection = null;
-  
-        try {
-          const desc =
-            typeof job.description === 'string' ? JSON.parse(job.description) : job.description;
-  
-          pickedSection = await pickRelevantDescriptionSections(desc);
-        } catch (e) {
-          pickedSection = null;
-        }
-  
-        return {
-          ...job,
-          description: pickedSection ? [pickedSection] : [],
-        };
-      })
-    );
+    const transformedJobs = getJobsBySkill.map((job) => {
+      let pickedSection = null;
+
+      try {
+        const desc =
+          typeof job.description === 'string' ? JSON.parse(job.description) : job.description;
+
+        pickedSection = pickRelevantDescriptionSections(desc);
+      } catch (e) {
+        pickedSection = null;
+      }
+
+      return {
+        ...job,
+        description: pickedSection ? [pickedSection] : [],
+      };
+    });
     const totalPages = Math.ceil(total / LIMIT);
     return {
       skill: skill[0],

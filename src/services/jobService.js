@@ -319,23 +319,21 @@ export async function getJobList(params) {
     jobsDao.getJobFacets({ filters }),
   ]);
 
-  const jobs = await Promise.all(
-    rawJobs.map(async (job) => {
-      let descriptionPreview = null;
-      try {
-        const desc =
-          typeof job.description === 'string' ? JSON.parse(job.description) : job.description;
-        descriptionPreview = await pickRelevantDescriptionSections(desc);
-      } catch {
-        descriptionPreview = null;
-      }
-      const { description: _raw, ...rest } = job;
-      return {
-        ...rest,
-        description: descriptionPreview,
-      };
-    })
-  );
+  const jobs = rawJobs.map((job) => {
+    let descriptionPreview = null;
+    try {
+      const desc =
+        typeof job.description === 'string' ? JSON.parse(job.description) : job.description;
+      descriptionPreview = pickRelevantDescriptionSections(desc);
+    } catch {
+      descriptionPreview = null;
+    }
+    const { description: _raw, ...rest } = job;
+    return {
+      ...rest,
+      description: descriptionPreview,
+    };
+  });
 
   const totalPages = limit > 0 ? Math.ceil(total / limit) : 0;
   const meta = {

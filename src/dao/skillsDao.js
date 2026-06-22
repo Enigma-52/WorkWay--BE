@@ -54,7 +54,10 @@ export const skillsQ = {
     SELECT name, slug FROM skills where slug = $1 limit 1;
   `,
   GET_JOBS_BY_SKILL: `
-  SELECT j.* , c.logo_url AS company_logo_url, c.slug AS company_slug
+  SELECT j.id, j.company_id, j.company, j.slug, j.platform, j.title, j.url,
+    j.description, j.experience_level, j.employment_type, j.location, j.domain,
+    j.skills, j.updated_at, j.created_at, j.metadata,
+    c.logo_url AS company_logo_url, c.slug AS company_slug
     FROM jobs j
     JOIN companies c ON j.company_id = c.id
     WHERE j.skills @> $1::jsonb

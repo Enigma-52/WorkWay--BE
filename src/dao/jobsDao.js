@@ -77,7 +77,9 @@ export const jobsQ = {
   COMPANY_FEED: `
     SELECT ${JOB_FEED_COLS}
     FROM jobs j
-    WHERE j.company_id = $1;
+    WHERE j.company_id = $1
+    ORDER BY j.created_at DESC
+    LIMIT 200;
   `,
   GET_SINGLE_JOB: `
     SELECT j.* , c.logo_url AS company_logo_url , c.slug AS company_slug
@@ -102,7 +104,7 @@ export const jobsQ = {
     LIMIT 3;
   `,
   GET_JOBS_FOR_COMPANY_FROM_DB : `
-  SELECT job_id from jobs where company_id = $1;`,
+  SELECT job_id from jobs where company_id = $1 LIMIT 500;`,
   GET_RECENT_JOBS_FOR_COMPANY_FROM_DB : `
     SELECT ${JOB_FEED_COLS}
     FROM jobs j
