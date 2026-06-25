@@ -7,8 +7,21 @@ import { defaultPgDao } from '../dao/dao.js';
  * @param {Function} fn      - Async function to execute
  * @param {boolean}  dryRun  - If true, record the trigger but skip execution
  */
-export async function runCronJob({ tag, fn, dryRun = false }) {
+export async function runCronJob({ tag, fn, dryRun = false, force = false }) {
   const startedAt = new Date();
+
+  // Check if this job is enabled (skip check if forced via manual trigger)
+  if (!force) {
+    const config = await defaultPgDao.getQ({
+      sql: `SELECT enabled FROM cron_config WHERE tag = $1 LIMIT 1`,
+      values: [tag],
+    });
+    // If row exists and enabled is false, skip
+    if (config.length > 0 && !config[0].enabled) {
+      console.log(`[CRON] ${tag} is disabled, skipping`);
+      return { tag, status: 'disabled' };
+    }
+  }
 
   // Insert a run record
   const inserted = await defaultPgDao.getQ({

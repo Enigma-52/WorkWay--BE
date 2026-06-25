@@ -81,15 +81,34 @@ router.get('/daily_yc', async (req, res) => {
 
 /// Cron Runner ///
 
-// Manually trigger any registered job by tag — ?dry=true for dry run
+// Manually trigger any registered job by tag — ?dry=true for dry run, ?force=true to bypass disabled
 router.get('/run/:tag', async (req, res) => {
   const { tag } = req.params;
   const dryRun = req.query.dry === 'true';
+  const force = req.query.force === 'true';
   const job = JOBS.find((j) => j.tag === tag);
   if (!job) return res.status(404).json({ error: `Unknown job tag: ${tag}` });
 
-  const result = await runCronJob({ tag: job.tag, fn: job.fn, dryRun });
+  const result = await runCronJob({ tag: job.tag, fn: job.fn, dryRun, force });
   res.json(result);
+});
+
+// Enable or disable a cron job — /toggle/daily_yc?enabled=false
+router.get('/toggle/:tag', async (req, res) => {
+  const { tag } = req.params;
+  const enabled = req.query.enabled !== 'false'; // defaults to true
+  await defaultPgDao.getQ({
+    sql: `INSERT INTO cron_config (tag, enabled) VALUES ($1, $2)
+          ON CONFLICT (tag) DO UPDATE SET enabled = $2`,
+    values: [tag, enabled],
+  });
+  res.json({ tag, enabled });
+});
+
+// View all cron config flags
+router.get('/config', async (req, res) => {
+  const rows = await defaultPgDao.getAllRows({ tableName: 'cron_config' });
+  res.json(rows);
 });
 
 // View run history
