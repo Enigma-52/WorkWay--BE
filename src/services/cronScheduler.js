@@ -7,12 +7,12 @@ import {
 import { fetchAshbyJobs } from './cronService.js';
 
 export const JOBS = [
-  // Greenhouse: every 2 hrs — 0,2,4,6,8,10,12,14,16,18,20,22
-  { tag: 'daily_greenhouse', fn: insertGreenhouseJobsDaily, schedule: '0 */2 * * *' },
-  // Ashby: every 4 hrs — 1,5,9,13,17,21  (offset by 1hr to avoid collision)
-  { tag: 'daily_ashby',      fn: fetchAshbyJobs,            schedule: '0 1,5,9,13,17,21 * * *' },
-  // YC: every 7 hrs — 0,7,14,21  (offset by 30min to avoid collision with greenhouse)
-  { tag: 'daily_yc',         fn: insertYCJobsDaily,         schedule: '30 0,7,14,21 * * *' },
+  // Greenhouse: every 4hrs → 0, 4, 8, 12, 16, 20
+  { tag: 'daily_greenhouse', fn: insertGreenhouseJobsDaily, schedule: '0 0,4,8,12,16,20 * * *' },
+  // Ashby: every 8hrs → 2, 10, 18  (2hr gap from GH)
+  { tag: 'daily_ashby',      fn: fetchAshbyJobs,            schedule: '0 2,10,18 * * *' },
+  // YC: every 8hrs → 6, 14, 22  (2hr gap from both GH and Ashby)
+  { tag: 'daily_yc',         fn: insertYCJobsDaily,         schedule: '0 6,14,22 * * *' },
 ];
 
 export function startCronScheduler({ dryRun = false } = {}) {
