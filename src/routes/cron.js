@@ -3,10 +3,15 @@ import { fetchGreenhouseJobs, insertGreenhouseCompanies , insertYCcompanies ,  i
 import { backfillSkillsFromStoredDescriptions } from '../services/backfillService.js'
 import { insertGreenhouseJobsDaily , insertWorkableJobsDaily , insertYCJobsDaily} from "../services/dailyService.js";
 import { runCronJob } from '../services/cronRunner.js';
-import { JOBS } from '../services/cronScheduler.js';
+import { JOBS, getNextRunTime } from '../services/cronScheduler.js';
 import { defaultPgDao } from '../dao/dao.js';
 
 const router = express.Router();
+
+function toIST(date) {
+  if (!date) return null;
+  return date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true, dateStyle: 'medium', timeStyle: 'short' });
+}
 
 router.get('/insert_greenhouse', async (req, res) => {
   console.log('Cron job /insert_greenhouse triggered');
@@ -109,6 +114,49 @@ router.get('/toggle/:tag', async (req, res) => {
 router.get('/config', async (req, res) => {
   const rows = await defaultPgDao.getAllRows({ tableName: 'cron_config' });
   res.json(rows);
+});
+
+// Status of all jobs — next run time + currently running
+router.get('/status', async (req, res) => {
+  const now = new Date();
+
+  // Check which jobs are currently running (status = 'started' and no finished_at)
+  const running = await defaultPgDao.getQ({
+    sql: `SELECT tag, id as run_id, started_at FROM cron_runs
+          WHERE status = 'started' AND finished_at IS NULL
+          ORDER BY started_at DESC`,
+    values: [],
+  });
+  const runningByTag = {};
+  for (const row of running) {
+    runningByTag[row.tag] = { runId: row.run_id, startedAt: row.started_at, runningFor: Math.round((now - new Date(row.started_at)) / 1000) + 's' };
+  }
+
+  // Get enabled/disabled flags
+  const configRows = await defaultPgDao.getQ({
+    sql: `SELECT tag, enabled FROM cron_config`,
+    values: [],
+  });
+  const enabledByTag = {};
+  for (const row of configRows) {
+    enabledByTag[row.tag] = row.enabled;
+  }
+
+  const status = JOBS.map((job) => {
+    const nextRun = getNextRunTime(job.schedule, now);
+    const nextRunIn = nextRun ? Math.round((nextRun - now) / 60000) : null;
+    const enabled = enabledByTag[job.tag] !== undefined ? enabledByTag[job.tag] : true;
+    return {
+      tag: job.tag,
+      schedule: job.schedule,
+      enabled,
+      running: runningByTag[job.tag] || false,
+      nextRunAt: enabled ? (toIST(nextRun) || null) : null,
+      nextRunInMinutes: enabled ? nextRunIn : null,
+    };
+  });
+
+  res.json(status);
 });
 
 // View run history

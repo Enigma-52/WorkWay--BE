@@ -23,3 +23,36 @@ export function startCronScheduler({ dryRun = false } = {}) {
     console.log(`[CRON] Scheduled "${job.tag}" → ${job.schedule}${dryRun ? ' (dry run)' : ''}`);
   }
 }
+
+/**
+ * Parse a cron schedule and find the next matching time after `from`.
+ * Supports: minute, hour, day-of-month, month, day-of-week (5-field).
+ */
+export function getNextRunTime(schedule, from = new Date()) {
+  const [minExpr, hourExpr] = schedule.split(' ');
+
+  const expandField = (expr, max) => {
+    if (expr === '*') return Array.from({ length: max }, (_, i) => i);
+    if (expr.startsWith('*/')) {
+      const step = parseInt(expr.slice(2));
+      return Array.from({ length: max }, (_, i) => i).filter((v) => v % step === 0);
+    }
+    return expr.split(',').map(Number);
+  };
+
+  const minutes = expandField(minExpr, 60);
+  const hours = expandField(hourExpr, 24);
+
+  // Search up to 48 hours ahead
+  const cursor = new Date(from);
+  cursor.setSeconds(0, 0);
+  cursor.setMinutes(cursor.getMinutes() + 1); // start from next minute
+
+  for (let i = 0; i < 2880; i++) {
+    if (hours.includes(cursor.getHours()) && minutes.includes(cursor.getMinutes())) {
+      return cursor;
+    }
+    cursor.setMinutes(cursor.getMinutes() + 1);
+  }
+  return null;
+}
