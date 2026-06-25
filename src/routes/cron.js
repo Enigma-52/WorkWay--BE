@@ -2,6 +2,9 @@ import express from 'express';
 import { fetchGreenhouseJobs, insertGreenhouseCompanies , insertYCcompanies ,  insertLeverCompanies , fetchLeverJobs , insertAshbyCompanies , fetchAshbyJobs , insertWorkableCompanies} from '../services/cronService.js';
 import { backfillSkillsFromStoredDescriptions } from '../services/backfillService.js'
 import { insertGreenhouseJobsDaily , insertWorkableJobsDaily , insertYCJobsDaily} from "../services/dailyService.js";
+import { runCronJob } from '../services/cronRunner.js';
+import { JOBS } from '../services/cronScheduler.js';
+import { defaultPgDao } from '../dao/dao.js';
 
 const router = express.Router();
 
@@ -74,6 +77,32 @@ router.get('/daily_yc', async (req, res) => {
     console.error('daily_yc route error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+/// Cron Runner ///
+
+// Manually trigger any registered job by tag — ?dry=true for dry run
+router.get('/run/:tag', async (req, res) => {
+  const { tag } = req.params;
+  const dryRun = req.query.dry === 'true';
+  const job = JOBS.find((j) => j.tag === tag);
+  if (!job) return res.status(404).json({ error: `Unknown job tag: ${tag}` });
+
+  const result = await runCronJob({ tag: job.tag, fn: job.fn, dryRun });
+  res.json(result);
+});
+
+// View run history
+router.get('/runs', async (req, res) => {
+  const tag = req.query.tag;
+  const where = tag ? `tag = '${tag}'` : undefined;
+  const rows = await defaultPgDao.getAllRows({
+    tableName: 'cron_runs',
+    where,
+    orderBy: 'id DESC',
+    limit: 50,
+  });
+  res.json(rows);
 });
 
 export default router;

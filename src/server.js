@@ -11,6 +11,7 @@ import { config } from './config.js';
 import routes from './routes/index.js';
 import { runPgStatement } from './dao/dao.js';
 import { initGoogleAuth } from './services/authService.js';
+import { startCronScheduler } from './services/cronScheduler.js';
 
 
 const app = express();
@@ -74,6 +75,9 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
   await initPg().catch((err) => logger.error(err));
 
   logger.info("PostgreSQL initialized");
+
+  startCronScheduler();
+
   logger.info("Server started", { port: PORT });
 });
 
