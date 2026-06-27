@@ -7,16 +7,18 @@ import {
   normalizeAndValidateListParams,
 } from '../services/jobService.js';
 import { recordJobView } from '../services/jobViewEventsService.js';
+import { logger } from '../utils/logger.js';
 
 const router = express.Router();
 
 router.get('/details', async (req, res) => {
   try {
     const slug = req.query.slug;
+    logger.info('Fetching job details', { slug });
     const jobDetails = await getJobDetails(slug);
     res.json(jobDetails);
   } catch (err) {
-    console.error('GET /api/job/details error:', err);
+    logger.error('GET /api/job/details error', { error: err.message });
     res.status(500).json({
       error: 'Internal server error',
       message: err?.message ?? 'Failed to fetch job details',
