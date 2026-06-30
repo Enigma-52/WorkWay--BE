@@ -239,6 +239,16 @@ export function normalizeAndValidateListParams(query) {
   const location = typeof query.location === 'string' ? query.location.trim() : '';
   const companySlug = typeof query.company_slug === 'string' ? query.company_slug.trim() : '';
 
+  const POSTED_MAP = { today: 1, '3d': 3, '7d': 7, '30d': 30 };
+  const postedRaw = typeof query.posted === 'string' ? query.posted.trim().toLowerCase() : '';
+  let postedSince = null;
+  if (postedRaw && postedRaw !== 'all' && POSTED_MAP[postedRaw]) {
+    const d = new Date();
+    d.setDate(d.getDate() - POSTED_MAP[postedRaw]);
+    d.setHours(0, 0, 0, 0);
+    postedSince = d.toISOString();
+  }
+
   const filters = {
     q: q || null,
     domain: domainName,
@@ -247,6 +257,7 @@ export function normalizeAndValidateListParams(query) {
     location: location || null,
     company_slug: companySlug || null,
     skill_slug: skill_slug,
+    posted_since: postedSince,
   };
 
   return {
@@ -268,6 +279,7 @@ export function normalizeAndValidateListParams(query) {
       location: location || undefined,
       company_slug: companySlug || undefined,
       skill: skill_slug ?? undefined,
+      posted: postedRaw && postedRaw !== 'all' ? postedRaw : undefined,
       sort,
     },
   };

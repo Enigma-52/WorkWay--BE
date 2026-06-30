@@ -63,6 +63,12 @@ function buildListWhere(filters, opts = {}) {
     paramIndex += 1;
   }
 
+  if (filters.posted_since != null) {
+    whereClauses.push(`j.created_at >= $${paramIndex}`);
+    values.push(filters.posted_since);
+    paramIndex += 1;
+  }
+
   return { whereClauses, values };
 }
 
