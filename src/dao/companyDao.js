@@ -1,14 +1,15 @@
 import PostgresDao from './dao.js';
 
 export const companyQ = {
+  // job_counts is passed in as a precomputed/cached JSON blob (see
+  // companyDao.getCachedJobCountsByCompany) instead of being recomputed via
+  // GROUP BY over the full jobs table on every search request — that GROUP BY
+  // is completely independent of the search text/letter/platform filters, so
+  // it was doing identical, avoidable full-table work on every keystroke.
   ALL_COMPANY_LIST: `
     WITH job_counts AS (
-      SELECT
-        company_id,
-        COUNT(*)::int AS total_jobs,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int AS recent_jobs
-      FROM jobs
-      GROUP BY company_id
+      SELECT * FROM jsonb_to_recordset($1::jsonb)
+        AS x(company_id bigint, total_jobs int, recent_jobs int)
     )
     SELECT
       c.id,
@@ -22,15 +23,23 @@ export const companyQ = {
     FROM companies c
     LEFT JOIN job_counts jc ON jc.company_id = c.id
     WHERE
-      (COALESCE($1, '') = '' OR c.name ILIKE '%' || $1 || '%')
-      AND (COALESCE($2, 'ALL') = 'ALL' OR c.name ILIKE $2 || '%')
-      AND ($3::boolean = false OR COALESCE(jc.total_jobs, 0) > 0)
-      AND (COALESCE($6, '') = '' OR c.platform = $6)
+      (COALESCE($2, '') = '' OR c.name ILIKE '%' || $2 || '%')
+      AND (COALESCE($3, 'ALL') = 'ALL' OR c.name ILIKE $3 || '%')
+      AND ($4::boolean = false OR COALESCE(jc.total_jobs, 0) > 0)
+      AND (COALESCE($7, '') = '' OR c.platform = $7)
     ORDER BY
       COALESCE(jc.recent_jobs, 0) DESC,
       COALESCE(jc.total_jobs, 0) DESC,
       c.name ASC
-    LIMIT $4 OFFSET $5;
+    LIMIT $5 OFFSET $6;
+  `,
+  JOB_COUNTS_BY_COMPANY: `
+    SELECT
+      company_id,
+      COUNT(*)::int AS total_jobs,
+      COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int AS recent_jobs
+    FROM jobs
+    GROUP BY company_id;
   `,
   ALL_COMPANY_COUNT: `
     SELECT COUNT(*)::int AS total
@@ -106,9 +115,29 @@ export const companyQ = {
   `,
 };
 
+const JOB_COUNTS_BY_COMPANY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+let jobCountsByCompanyCache = null; // { json, expiresAt }
+
+// getOverview() has zero parameters — it's a fully global computation
+// (stats, fixed trending IDs, recently added, actively-hiring top-6, the
+// latter also doing a GROUP BY over the full jobs table). Cache the whole
+// result rather than recomputing on every homepage/overview widget hit.
+const OVERVIEW_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+let overviewCache = null; // { result, expiresAt }
+
 class CompanyDao extends PostgresDao {
   constructor() {
     super('companies');
+  }
+
+  async getCachedJobCountsByCompanyJson() {
+    if (jobCountsByCompanyCache && jobCountsByCompanyCache.expiresAt > Date.now()) {
+      return jobCountsByCompanyCache.json;
+    }
+    const rows = await this.getQ({ sql: companyQ.JOB_COUNTS_BY_COMPANY, values: [] });
+    const json = JSON.stringify(rows);
+    jobCountsByCompanyCache = { json, expiresAt: Date.now() + JOB_COUNTS_BY_COMPANY_CACHE_TTL_MS };
+    return json;
   }
 
   async getAllCompanies({ q, page, limit, letter, hiring, platform }) {
@@ -121,7 +150,8 @@ class CompanyDao extends PostgresDao {
     const hiringOnly = !!hiring;
     const platformFilter = platform || '';
 
-    const listValues = [search, letterFilter, hiringOnly, limitNum, offset, platformFilter];
+    const jobCountsJson = await this.getCachedJobCountsByCompanyJson();
+    const listValues = [jobCountsJson, search, letterFilter, hiringOnly, limitNum, offset, platformFilter];
 
     const [listResult, countResult] = await Promise.all([
       this.getQ({
@@ -169,6 +199,10 @@ class CompanyDao extends PostgresDao {
   }
 
   async getOverview() {
+    if (overviewCache && overviewCache.expiresAt > Date.now()) {
+      return overviewCache.result;
+    }
+
     const TRENDING_COMPANY_IDS = [118 , 1170 , 349 , 286 , 212 , 282  , 341 , 607 , 287];
 
     const [stats, trending, recent, hiring] = await Promise.all([
@@ -178,12 +212,14 @@ class CompanyDao extends PostgresDao {
       this.getQ({ sql: companyQ.OVERVIEW_ACTIVELY_HIRING, values: [] }),
     ]);
 
-    return {
+    const result = {
       stats: stats?.[0] ?? { total_companies: 0, total_jobs: 0 },
       trending: trending || [],
       recently_added: recent || [],
       actively_hiring: hiring || [],
     };
+    overviewCache = { result, expiresAt: Date.now() + OVERVIEW_CACHE_TTL_MS };
+    return result;
   }
 }
 
