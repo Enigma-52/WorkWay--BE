@@ -76,7 +76,11 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
 
   logger.info("PostgreSQL initialized");
 
-  startCronScheduler();
+  if (config.APP_ENV === 'production') {
+    startCronScheduler();
+  } else {
+    logger.info(`Cron scheduler skipped (APP_ENV=${config.APP_ENV})`);
+  }
 
   logger.info("Server started", { port: PORT });
 });
