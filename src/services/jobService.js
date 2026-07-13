@@ -3,6 +3,28 @@ import { getSkillBySlug } from '../data/skills.js';
 import { JOB_DOMAINS, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../utils/constants.js';
 import { pickRelevantDescriptionSections } from '../utils/helper.js';
 
+// The global (fully unfiltered) total count and facet breakdown only change
+// when the ingestion crons run (every few hours), but were being recomputed
+// via full-table GROUP BY / COUNT(*) scans on every single unfiltered /jobs
+// pageview. Cache them for a short window instead — the job list itself is
+// still fetched fresh every time (see getJobList), only these two heavy
+// aggregate queries are skipped on a cache hit.
+const UNFILTERED_FACETS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+let unfilteredFacetsCache = null; // { total, facets, expiresAt }
+
+function isUnfilteredQuery(filters) {
+  return (
+    !filters.q &&
+    !filters.domain &&
+    !filters.employment_type &&
+    !filters.experience_level &&
+    !filters.location &&
+    !filters.company_slug &&
+    !filters.skill_slug &&
+    !filters.posted_since
+  );
+}
+
 export async function getJobDetails(slug) {
   try {
     const jobDetails = await jobsDao.getSingleJob({ slug });
@@ -325,11 +347,27 @@ function formatFacets(daoFacets) {
  */
 export async function getJobList(params) {
   const { filters, page, limit, sort, applied_filters_for_response } = params;
-  const [rawJobs, total, facets] = await Promise.all([
-    jobsDao.searchJobs({ filters, page, limit, sort }),
-    jobsDao.countJobs({ filters }),
-    jobsDao.getJobFacets({ filters }),
-  ]);
+
+  const useCache =
+    isUnfilteredQuery(filters) &&
+    unfilteredFacetsCache &&
+    unfilteredFacetsCache.expiresAt > Date.now();
+
+  let rawJobs, total, facets;
+  if (useCache) {
+    [rawJobs] = await Promise.all([jobsDao.searchJobs({ filters, page, limit, sort })]);
+    total = unfilteredFacetsCache.total;
+    facets = unfilteredFacetsCache.facets;
+  } else {
+    [rawJobs, total, facets] = await Promise.all([
+      jobsDao.searchJobs({ filters, page, limit, sort }),
+      jobsDao.countJobs({ filters }),
+      jobsDao.getJobFacets({ filters }),
+    ]);
+    if (isUnfilteredQuery(filters)) {
+      unfilteredFacetsCache = { total, facets, expiresAt: Date.now() + UNFILTERED_FACETS_CACHE_TTL_MS };
+    }
+  }
 
   const jobs = rawJobs.map((job) => {
     let descriptionPreview = null;
