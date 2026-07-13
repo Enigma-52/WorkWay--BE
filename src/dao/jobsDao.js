@@ -172,6 +172,9 @@ const SALARY_STATS_QUERY = `
     AND j.metadata->>'compensation' != '';
 `;
 
+const SALARY_STATS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+let salaryStatsCache = null; // { rows, expiresAt }
+
 class JobsDao extends PostgresDao {
   constructor() {
     super('jobs');
@@ -354,7 +357,15 @@ class JobsDao extends PostgresDao {
   }
 
   async getSalaryStatsRows() {
-    return this.getQ({ sql: SALARY_STATS_QUERY, values: [] });
+    // Zero-parameter, global query — runs on every /salary-insights request
+    // regardless of the caller's filters/pagination, but the underlying
+    // ashby-with-compensation dataset only changes when ingestion crons run.
+    if (salaryStatsCache && salaryStatsCache.expiresAt > Date.now()) {
+      return salaryStatsCache.rows;
+    }
+    const rows = await this.getQ({ sql: SALARY_STATS_QUERY, values: [] });
+    salaryStatsCache = { rows, expiresAt: Date.now() + SALARY_STATS_CACHE_TTL_MS };
+    return rows;
   }
 
   async getSalaryInsightsJobs({ filters = {}, page = 1, limit = 20, sort = 'salary_desc' }) {
