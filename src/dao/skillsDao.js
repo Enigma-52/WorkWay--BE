@@ -69,18 +69,32 @@ export const skillsQ = {
     `,
 };
     
+// GET_ALL_SKILLS expands every job's entire skills array via
+// jsonb_array_elements across the whole jobs table (300k+ rows) with no
+// filter to narrow it — it's an inherently global, unfiltered computation
+// that only changes when the ingestion crons run. Cache it instead of
+// recomputing on every single request (was measured at 4.4s uncached).
+const ALL_SKILLS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+let allSkillsCache = null; // { result, expiresAt }
+
 class SkillsDao extends PostgresDao {
   constructor() {
     super('skills');
   }
 
   async getAllSkills() {
+    if (allSkillsCache && allSkillsCache.expiresAt > Date.now()) {
+      return allSkillsCache.result;
+    }
+
     const rows = await this.getQ({
       sql: skillsQ.GET_ALL_SKILLS,
       values: [],
     });
-  
-    return rows[0]?.result;
+
+    const result = rows[0]?.result;
+    allSkillsCache = { result, expiresAt: Date.now() + ALL_SKILLS_CACHE_TTL_MS };
+    return result;
   }
 
   async getSkillBySlug(slug) {
