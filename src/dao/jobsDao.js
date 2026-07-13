@@ -284,10 +284,13 @@ class JobsDao extends PostgresDao {
   async countJobs({ filters }) {
     const { whereClauses, values } = buildListWhere(filters);
     const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    // Only join companies when filtering by company_slug — otherwise it's a
+    // pure-overhead join on every unfiltered/filtered count with no filtering benefit.
+    const needsCompanyJoin = filters.company_slug != null && filters.company_slug.trim() !== '';
     const sql = `
       SELECT COUNT(*)::int AS total
       FROM jobs j
-      JOIN companies c ON j.company_id = c.id
+      ${needsCompanyJoin ? 'JOIN companies c ON j.company_id = c.id' : ''}
       ${whereSql}
     `;
     const rows = await this.getQ({ sql, values });
@@ -303,6 +306,8 @@ class JobsDao extends PostgresDao {
   async getJobFacets({ filters }) {
     const base = { domains: [], employment_types: [], experience_levels: [] };
 
+    const needsCompanyJoin = filters.company_slug != null && filters.company_slug.trim() !== '';
+
     const runFacet = async (excludeFacet) => {
       const { whereClauses, values } = buildListWhere(filters, { excludeFacet });
       const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -311,7 +316,7 @@ class JobsDao extends PostgresDao {
       const sql = `
         SELECT ${groupCol} AS ${alias}, COUNT(*)::int AS count
         FROM jobs j
-        JOIN companies c ON j.company_id = c.id
+        ${needsCompanyJoin ? 'JOIN companies c ON j.company_id = c.id' : ''}
         ${whereSql}
         GROUP BY ${groupCol}
         ORDER BY count DESC
