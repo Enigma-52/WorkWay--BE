@@ -22,6 +22,12 @@ export const filterQ = {
   `,
 };
 
+// getJobsPerDomain() is a zero-parameter, fully global GROUP BY over the
+// whole jobs table, recomputed on every /domains pageview even though it
+// only changes when ingestion crons run. Cache it.
+const JOBS_PER_DOMAIN_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+let jobsPerDomainCache = null; // { result, expiresAt }
+
 class FiltersDao extends PostgresDao {
   constructor() {
     super('jobs');
@@ -41,10 +47,15 @@ class FiltersDao extends PostgresDao {
     });
   }
   async getJobsPerDomain() {
-    return this.getQ({
+    if (jobsPerDomainCache && jobsPerDomainCache.expiresAt > Date.now()) {
+      return jobsPerDomainCache.result;
+    }
+    const result = await this.getQ({
       sql: filterQ.GET_JOBS_PER_DOMAIN,
       values: [],
     });
+    jobsPerDomainCache = { result, expiresAt: Date.now() + JOBS_PER_DOMAIN_CACHE_TTL_MS };
+    return result;
   }
 }
 
