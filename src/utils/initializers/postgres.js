@@ -19,7 +19,13 @@ export async function initPg() {
 
     ssl: { rejectUnauthorized: false },
 
-    max: 5,
+    // 5 was too small: a single unfiltered /jobs request alone fans out to
+    // 4-5 concurrent queries (list + count + 3 facet queries), so even 2
+    // simultaneous visitors could exhaust the whole pool and queue every
+    // other request behind them. Verify this against your Postgres
+    // provider's own max_connections limit if you have multiple app
+    // instances sharing the same database.
+    max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
 
