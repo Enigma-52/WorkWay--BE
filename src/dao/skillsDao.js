@@ -117,6 +117,12 @@ class SkillsDao extends PostgresDao {
       ]
     });
   }
+
+  // Called after ingestion crons finish so the next request recomputes
+  // fresh data instead of waiting out the full 24h TTL.
+  clearCache() {
+    allSkillsCache = null;
+  }
 }
 
 export const skillsDao = new SkillsDao();

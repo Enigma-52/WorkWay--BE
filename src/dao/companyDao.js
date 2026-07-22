@@ -221,6 +221,13 @@ class CompanyDao extends PostgresDao {
     overviewCache = { result, expiresAt: Date.now() + OVERVIEW_CACHE_TTL_MS };
     return result;
   }
+
+  // Called after ingestion crons finish so the next request recomputes
+  // fresh data instead of waiting out the full 24h TTL.
+  clearCache() {
+    jobCountsByCompanyCache = null;
+    overviewCache = null;
+  }
 }
 
 export const companyDao = new CompanyDao();

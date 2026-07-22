@@ -57,6 +57,12 @@ class FiltersDao extends PostgresDao {
     jobsPerDomainCache = { result, expiresAt: Date.now() + JOBS_PER_DOMAIN_CACHE_TTL_MS };
     return result;
   }
+
+  // Called after ingestion crons finish so the next request recomputes
+  // fresh data instead of waiting out the full 24h TTL.
+  clearCache() {
+    jobsPerDomainCache = null;
+  }
 }
 
 export const filtersDao = new FiltersDao();

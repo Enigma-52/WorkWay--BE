@@ -368,6 +368,12 @@ class JobsDao extends PostgresDao {
     return rows;
   }
 
+  // Called after ingestion crons finish so the next request recomputes
+  // fresh data instead of waiting out the full 24h TTL.
+  clearCache() {
+    salaryStatsCache = null;
+  }
+
   async getSalaryInsightsJobs({ filters = {}, page = 1, limit = 20, sort = 'salary_desc' }) {
     const whereClauses = [
       `j.platform = 'ashby'`,

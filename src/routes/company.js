@@ -10,9 +10,17 @@ import {
 const router = express.Router();
 
 router.get('/details', async (req, res) => {
-  const slug = req.query.slug;
-  const companyDetails = await getCompanyDetails(slug);
-  res.json(companyDetails);
+  try {
+    const slug = req.query.slug;
+    const companyDetails = await getCompanyDetails(slug);
+    if (!companyDetails) {
+      return res.status(404).json({ error: 'Company not found' });
+    }
+    res.json(companyDetails);
+  } catch (err) {
+    console.error('GET /api/company/details failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.get('/', async (req, res) => {

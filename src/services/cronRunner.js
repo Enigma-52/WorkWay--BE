@@ -1,4 +1,20 @@
 import { defaultPgDao } from '../dao/dao.js';
+import { companyDao } from '../dao/companyDao.js';
+import { skillsDao } from '../dao/skillsDao.js';
+import { filtersDao } from '../dao/filterDao.js';
+import { jobsDao } from '../dao/jobsDao.js';
+
+// Every ingestion cron writes to `jobs`/`companies`, which is exactly the
+// data these 24h in-memory caches are derived from. Clear them all after any
+// cron completes so the next request gets fresh data immediately instead of
+// waiting out the full 24h TTL (the TTL still exists as a safety net in case
+// this hook is ever missed).
+function clearIngestionCaches() {
+  companyDao.clearCache();
+  skillsDao.clearCache();
+  filtersDao.clearCache();
+  jobsDao.clearCache();
+}
 
 /**
  * Generic cron job runner with DB tracking and dry run support.
@@ -48,6 +64,8 @@ export async function runCronJob({ tag, fn, dryRun = false, force = false }) {
             WHERE id = $3`,
       values: [durationMs, JSON.stringify(result || {}), runId],
     });
+
+    clearIngestionCaches();
 
     console.log(`[CRON] ${tag} completed in ${durationMs}ms (run #${runId})`);
     return { runId, tag, status: 'completed', durationMs, result };
