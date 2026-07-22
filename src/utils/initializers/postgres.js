@@ -25,7 +25,7 @@ export async function initPg() {
     // other request behind them. Verify this against your Postgres
     // provider's own max_connections limit if you have multiple app
     // instances sharing the same database.
-    max: 20,
+    max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
 
