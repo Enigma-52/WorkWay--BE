@@ -337,7 +337,7 @@ class TalentProfilesDao extends PostgresDao {
 
   async getEducation(profileId) {
     return this.getQ({
-      sql: `SELECT * FROM talent_education WHERE profile_id = $1 ORDER BY sort_order ASC, start_date DESC`,
+      sql: `SELECT * FROM talent_education WHERE profile_id = $1 ORDER BY sort_order ASC, start_year DESC`,
       values: [profileId],
     });
   }
