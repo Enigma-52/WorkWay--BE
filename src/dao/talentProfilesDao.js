@@ -27,6 +27,16 @@ const CAMEL_TO_SNAKE = {
   featuredOrder: 'featured_order',
 };
 
+// Columns typed JSONB — array values must be JSON-encoded, since node-postgres
+// serializes JS arrays as Postgres array literals ({"a","b"}), which jsonb rejects.
+const JSONB_COLUMNS = new Set([
+  'skills',
+  'languages',
+  'employment_types',
+  'social_links',
+  'previous_usernames',
+]);
+
 function toSnake(camelKey) {
   return CAMEL_TO_SNAKE[camelKey] || camelKey;
 }
@@ -34,7 +44,9 @@ function toSnake(camelKey) {
 function mapKeysToSnake(obj) {
   const result = {};
   for (const [key, value] of Object.entries(obj)) {
-    result[toSnake(key)] = value;
+    const column = toSnake(key);
+    result[column] =
+      JSONB_COLUMNS.has(column) && value != null ? JSON.stringify(value) : value;
   }
   return result;
 }
