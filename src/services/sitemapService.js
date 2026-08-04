@@ -266,22 +266,27 @@ export async function generateLocationOnlySitemap() {
 }
 
 /* =========================
-   JOBS (EMPTY FOR NOW)
+   JOBS (MOST RECENT 50K)
 ========================= */
+
+const RECENT_JOBS_LIMIT = 50000;
 
 export async function generateJobsSitemap() {
   const rows = await runPgStatement({
     query: `
-      SELECT slug, updated_at
+      SELECT slug, updated_at, created_at
       FROM jobs
       WHERE slug IS NOT NULL
+      ORDER BY created_at DESC NULLS LAST, id DESC
+      LIMIT $1
     `,
+    values: [RECENT_JOBS_LIMIT],
   });
 
   const items = rows.map((r) =>
     urlTag({
       loc: `/job/${r.slug}`,
-      lastmod: today(),
+      lastmod: (r.updated_at || r.created_at).toISOString().split('T')[0],
       changefreq: 'daily',
       priority: 0.9,
     })
@@ -316,59 +321,3 @@ export async function generateSkillsSitemap() {
 
 
 
-const JOBS_PER_SITEMAP = 20000;
-
-/* Jobs sitemap index */
-export async function generateJobsSitemapIndex() {
-
-  const rows = await runPgStatement({
-    query: `
-      SELECT COUNT(*)::int AS count
-      FROM jobs
-      WHERE slug IS NOT NULL
-    `,
-  });
-
-  const totalJobs = rows[0].count;
-  const pages = Math.ceil(totalJobs / JOBS_PER_SITEMAP);
-
-  const items = [];
-
-  for (let i = 1; i <= pages; i++) {
-    items.push(
-      sitemapTag(`/sitemaps/jobs-${i}.xml`)
-    );
-  }
-
-  return wrapSitemapIndex(items);
-}
-
-
-/* Individual sitemap page */
-export async function generateJobsSitemapPage(page) {
-
-  const limit = JOBS_PER_SITEMAP;
-  const offset = (page - 1) * limit;
-
-  const rows = await runPgStatement({
-    query: `
-      SELECT slug, updated_at
-      FROM jobs
-      WHERE slug IS NOT NULL
-      ORDER BY id
-      LIMIT $1 OFFSET $2
-    `,
-    values: [limit, offset],
-  });
-
-  const items = rows.map((r) =>
-    urlTag({
-      loc: `/job/${r.slug}`,
-      lastmod: today(),
-      changefreq: 'daily',
-      priority: 0.9,
-    })
-  );
-
-  return wrapUrlSet(items);
-}

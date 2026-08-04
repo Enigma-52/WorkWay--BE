@@ -6,8 +6,6 @@ import {
   generateDomainsSitemap,
   generateJobsSitemap,
   generateSkillsSitemap,
-  generateJobsSitemapIndex,
-  generateJobsSitemapPage,
   generateLocationSeoSitemap,
   generateLocationOnlySitemap,
 } from '../services/sitemapService.js';
@@ -42,26 +40,13 @@ router.get('/sitemaps/domains.xml', async (req, res) => {
   res.status(200).send(xml);
 });
 
-/* Jobs Sitemap Index*/
+/* Jobs (most recent 50k) */
 router.get('/sitemaps/jobs.xml', async (req, res) => {
-  const xml = await generateJobsSitemapIndex();
+  const xml = await generateJobsSitemap();
   res.setHeader('Content-Type', 'application/xml');
   res.status(200).send(xml);
 });
 
-/* Individual job sitemap pages */
-router.get('/sitemaps/jobs-:page.xml', async (req, res) => {
-  const page = parseInt(req.params.page, 10);
-
-  if (!page || page < 1) {
-    return res.status(400).send('Invalid sitemap page');
-  }
-
-  const xml = await generateJobsSitemapPage(page);
-
-  res.setHeader('Content-Type', 'application/xml');
-  res.status(200).send(xml);
-});
 router.get('/sitemaps/skills.xml', async (req, res) => {
   const xml = await generateSkillsSitemap();
   res.setHeader('Content-Type', 'application/xml');
