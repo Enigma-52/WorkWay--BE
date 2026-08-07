@@ -1,36 +1,30 @@
-# WorkWay--BE
+# WorkWay Backend
 
-Backend service for WorkWay. This service provides company/job discovery APIs, filter and feed APIs, sitemap generation, and Greenhouse-based ingestion endpoints.
+API service powering [WorkWay](https://www.workway.dev) — company/job discovery, filters, sitemaps, and Greenhouse/Ashby/YC ingestion.
 
-## Tech Stack
+## Stack
 
-- Node.js (ES modules)
-- Express 5
+- Node.js (ES modules) + Express 5
 - PostgreSQL (`pg`)
-- `dotenv`, `nodemon`
 
-## Repository Structure
+## Structure
 
-- `src/server.js`: app bootstrap, DB init, route mount, graceful shutdown.
-- `src/config.js`: environment/config mapping.
-- `src/routes/`: API route handlers.
-- `src/services/`: business logic.
-- `src/dao/`: SQL queries and DAO abstractions.
-- `src/utils/`: logger, constants, parsing and classification helpers.
-- `src/data/greenhouseCompanies.js`: seed list of Greenhouse namespaces.
-- `docs/DETAILED_DOCS.md`: detailed architecture and endpoint reference.
+- `src/server.js` — app bootstrap, DB init, route mount, graceful shutdown
+- `src/config.js` — environment/config mapping
+- `src/routes/` — API route handlers
+- `src/services/` — business logic
+- `src/dao/` — SQL queries and DAO abstractions
+- `src/utils/` — logger, constants, parsing/classification helpers
+- `src/data/greenhouseCompanies.js` — seed list of Greenhouse namespaces
+- `docs/DETAILED_DOCS.md` — detailed architecture and endpoint reference
 
-## Getting Started
-
-### 1. Install
+## Setup
 
 ```bash
 npm install
 ```
 
-### 2. Configure Environment
-
-Create `.env` in repo root (or export env vars):
+Create `.env` in repo root:
 
 ```env
 APP_ENV=dev
@@ -43,54 +37,34 @@ POSTGRES_DB_MAX_CONNECTIONS=20
 PORT=3000
 ```
 
-### 3. Run
+Run:
 
 ```bash
-npm run dev
+npm run dev   # or: npm start
 ```
 
-Or:
+Defaults to `http://localhost:3000`.
 
-```bash
-npm start
-```
+## API
 
-Service defaults to `http://localhost:3000`.
+Base path: `/api`
 
-## Health Endpoints
+- `/api/company`, `/api/job`, `/api/feed`, `/api/filter`, `/api/cron`
+- `/api/sitemap.xml`, `/api/sitemaps/*`
+- `GET /api/job/list` — paginated job listing with search/filters, returns `jobs`, `meta`, `applied_filters`, `facets`
+- `GET /api/job/filters` — facet counts for the filter UI
 
-- `GET /health` -> process uptime and timestamp.
-- `GET /` -> plain server-running response.
+Full request/response reference: `docs/DETAILED_DOCS.md`
 
-## API Base Path
+## Health
 
-All main APIs are under:
+- `GET /health` — uptime + timestamp
+- `GET /` — server-running check
 
-- `/api`
+## Ingestion
 
-Route groups:
+Cron-style HTTP endpoints load Greenhouse, Ashby, and YC companies, fetch their jobs, classify them (domain/level/employment type), and upsert into PostgreSQL.
 
-- `/api/company`
-- `/api/job`
-- `/api/feed`
-- `/api/filter`
-- `/api/cron`
-- `/api/sitemap.xml` and `/api/sitemaps/*`
+## Production
 
-### Jobs page (list + filters)
-
-- `GET /api/job/list` — Paginated job listing with search and filters (e.g. `?q=backend&page=1&limit=20&domain=software-engineering&employment_type=full-time&experience_level=senior&location=remote&sort=recent`). Returns `jobs`, `meta`, `applied_filters`, and `facets`.
-- `GET /api/job/filters` — Facet counts for domain, employment type, and experience level (for initial filter UI).
-
-See detailed request/response behavior in:
-
-- `docs/DETAILED_DOCS.md`
-
-## Ingestion Overview
-
-The service exposes cron-style HTTP endpoints that:
-
-- load Greenhouse, Ashby and YC companies,
-- fetch jobs for the companies already present in DB,
-- classify jobs (domain, level, employment type),
-- upsert jobs/companies into PostgreSQL.
+Serves **[workway.dev](https://www.workway.dev)**.
