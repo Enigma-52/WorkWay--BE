@@ -60,6 +60,24 @@ class AlertsDao extends PostgresDao {
       firstResultOnly: true,
     });
   }
+
+  // Every follower of any of the given company slugs, joined to the user row
+  // so the caller can filter by plan/opt-out without a second query. Used by
+  // the company-alert poller — batched across all companies matched in one
+  // run rather than queried per company.
+  async getFollowersForCompanySlugs(slugs) {
+    if (!slugs?.length) return [];
+    return this.getQ({
+      sql: `
+        SELECT ja.user_id, ja.company_slug, ja.company_name,
+               u.email, u.display_name, u.plan_key, u.emails_opted_out
+        FROM job_alerts ja
+        JOIN users u ON u.id = ja.user_id
+        WHERE ja.alert_type = 'company' AND ja.company_slug = ANY($1::text[])
+      `,
+      values: [slugs],
+    });
+  }
 }
 
 export const alertsDao = new AlertsDao();

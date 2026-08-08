@@ -1,11 +1,13 @@
 import cron from 'node-cron';
 import { runCronJob } from './cronRunner.js';
+import { defaultPgDao } from '../dao/dao.js';
 import {
   insertGreenhouseJobsDaily,
   insertYCJobsDaily,
 } from './dailyService.js';
 import { fetchAshbyJobs } from './cronService.js';
 import { runFeedbackRequestCron, runWeeklySummaryCron } from './lifecycleEmailService.js';
+import { runCompanyAlertCheckCron } from './companyAlertService.js';
 
 export const JOBS = [
   // Greenhouse: every 4hrs → 0, 4, 8, 12, 16, 20
@@ -18,9 +20,33 @@ export const JOBS = [
   // flag internally, so it's safe for this cron to run even before that's on.
   { tag: 'feedback_7day_email', fn: runFeedbackRequestCron, schedule: '0 9 * * *' },
   { tag: 'weekly_summary_email', fn: runWeeklySummaryCron,  schedule: '0 9 * * 1' },
+  // Company alert poller: standalone, not chained onto ingestion — polls for
+  // jobs newer than its own watermark every 10 minutes. Gated internally
+  // behind company_alert_emails_enabled, so safe to run before that's on.
+  { tag: 'company_alert_check', fn: runCompanyAlertCheckCron, schedule: '*/10 * * * *' },
 ];
 
-export function startCronScheduler({ dryRun = false } = {}) {
+// Every job in JOBS gets an explicit cron_config row the moment it's
+// registered here — enabled by default, but from now on because a row says
+// so, not because `runCronJob` silently treats "no row" as enabled. Keeps
+// the admin panel's toggle list complete without a separate manual step
+// each time a new cron is added.
+async function ensureCronConfigRows() {
+  for (const job of JOBS) {
+    try {
+      await defaultPgDao.getQ({
+        sql: `INSERT INTO cron_config (tag, enabled) VALUES ($1, true) ON CONFLICT (tag) DO NOTHING`,
+        values: [job.tag],
+      });
+    } catch (err) {
+      console.error(`[CRON] Failed to ensure cron_config row for "${job.tag}":`, err.message);
+    }
+  }
+}
+
+export async function startCronScheduler({ dryRun = false } = {}) {
+  await ensureCronConfigRows();
+
   for (const job of JOBS) {
     cron.schedule(job.schedule, () => {
       runCronJob({ tag: job.tag, fn: job.fn, dryRun });

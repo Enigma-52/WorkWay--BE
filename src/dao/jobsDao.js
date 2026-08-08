@@ -200,6 +200,24 @@ class JobsDao extends PostgresDao {
     });
   }
 
+  // Jobs inserted since the company-alert poller's last watermark. Capped at
+  // `limit` per run so a long outage catching up doesn't try to process
+  // thousands of rows (and thousands of alert emails) in one pass.
+  async getNewJobsSince(checkpointId, limit = 500) {
+    return this.getQ({
+      sql: `
+        SELECT j.id, j.slug, j.title, j.location, j.employment_type,
+               c.slug AS company_slug, c.name AS company_name
+        FROM jobs j
+        JOIN companies c ON c.id = j.company_id
+        WHERE j.id > $1 AND j.is_active = true
+        ORDER BY j.id ASC
+        LIMIT $2
+      `,
+      values: [checkpointId, limit],
+    });
+  }
+
   async getCompanyJobFeed({ companyId }) {
     return this.getQ({
       sql: jobsQ.COMPANY_FEED,

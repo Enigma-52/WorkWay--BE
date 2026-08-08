@@ -1,8 +1,36 @@
 import express from 'express';
 import { alertsDao } from '../dao/alertsDao.js';
+import { emailLogDao } from '../dao/emailLogDao.js';
+import { usersDao } from '../dao/usersDao.js';
+import { isPro } from '../utils/plans.js';
 import { logger } from '../utils/logger.js';
 
 const router = express.Router();
+
+// GET /api/alerts/recent?user_id=X — the "Alerts" dashboard tab's data source.
+// Gated server-side on plan, before any job data is fetched: a free request
+// never gets the job list, so there's nothing for the client to leak by
+// rendering it wrong. Must stay above `GET /:id`-shaped routes if any are
+// ever added, so "recent" is never captured as an :id param.
+router.get('/recent', async (req, res) => {
+  const { user_id } = req.query;
+  if (!user_id) return res.status(400).json({ error: 'user_id required' });
+
+  try {
+    const user = await usersDao.getById(user_id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (!isPro(user)) {
+      return res.json({ pro: false });
+    }
+
+    const jobs = await emailLogDao.getCompanyAlertJobsForUser(user_id, 30);
+    return res.json({ pro: true, jobs });
+  } catch (err) {
+    logger.error('alerts recent fetch failed', { error: err.message });
+    return res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/alerts?user_id=X
 // GET /api/alerts?user_id=X&check=1&alert_type=company&company_slug=xxx
