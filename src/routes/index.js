@@ -18,25 +18,35 @@ import alertsRoutes from './alerts.js';
 import seoRoutes from './seo.js';
 import scriptRoutes from './script.js'
 import talentProfilesRoutes from './talentProfiles.js';
+import adminRoutes from './admin.js';
+import { requireInternalSecret } from '../utils/internalAuth.js';
 
 const router = express.Router();
 
-router.use('/cron', cronRoutes);
+// Internal ops/ingestion tools — never called by any user-facing frontend,
+// only ever triggered manually or server-to-server. Publicly reachable
+// otherwise (no nginx carve-out routes these to the session-checked Next.js
+// layer), so they need their own gate: unauthenticated access would let
+// anyone trigger expensive scraping/embedding jobs, disable cron ingestion,
+// or run up OpenAI billing.
+router.use('/cron', requireInternalSecret, cronRoutes);
+router.use('/ai', requireInternalSecret, aiRoutes);
+router.use('/sync', requireInternalSecret, syncRoutes);
+router.use('/scripts', requireInternalSecret, scriptRoutes);
+
 router.use('/company', companyRoutes);
 router.use('/job', jobRoutes);
 router.use('/feed', feedRoutes);
 router.use('/filter', filterPagesRoutes);
-router.use('/ai', aiRoutes);
 router.use('/chat', chatRoutes);
-router.use('/sync', syncRoutes);
 router.use('/feedback', feedbackRoutes);
 router.use('/auth', authRoutes);
 router.use('/user', userRoutes);
 router.use('/applications', applicationsRoutes);
 router.use('/saved-jobs', savedJobsRoutes);
 router.use('/alerts', alertsRoutes);
-router.use('/scripts' , scriptRoutes)
 router.use('/talent-profiles', talentProfilesRoutes);
+router.use('/admin', adminRoutes);
 
 router.use('/seo', seoRoutes);
 router.use('/', sitemapRoutes); // backward compatibility

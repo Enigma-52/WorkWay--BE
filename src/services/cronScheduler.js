@@ -5,6 +5,7 @@ import {
   insertYCJobsDaily,
 } from './dailyService.js';
 import { fetchAshbyJobs } from './cronService.js';
+import { runFeedbackRequestCron, runWeeklySummaryCron } from './lifecycleEmailService.js';
 
 export const JOBS = [
   // Greenhouse: every 4hrs → 0, 4, 8, 12, 16, 20
@@ -13,6 +14,10 @@ export const JOBS = [
   { tag: 'daily_ashby',      fn: fetchAshbyJobs,            schedule: '0 2,10,18 * * *' },
   // YC: every 8hrs → 6, 14, 22  (2hr gap from both GH and Ashby)
   { tag: 'daily_yc',         fn: insertYCJobsDaily,         schedule: '0 6,14,22 * * *' },
+  // Lifecycle emails: both gated behind the lifecycle_emails_enabled feature
+  // flag internally, so it's safe for this cron to run even before that's on.
+  { tag: 'feedback_7day_email', fn: runFeedbackRequestCron, schedule: '0 9 * * *' },
+  { tag: 'weekly_summary_email', fn: runWeeklySummaryCron,  schedule: '0 9 * * 1' },
 ];
 
 export function startCronScheduler({ dryRun = false } = {}) {

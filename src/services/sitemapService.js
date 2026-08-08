@@ -79,6 +79,7 @@ export function generateSitemapIndex() {
     sitemapTag('/sitemaps/domains.xml'),
     sitemapTag('/sitemaps/jobs.xml'),
     sitemapTag('/sitemaps/skills.xml'),
+    sitemapTag('/sitemaps/talents.xml'),
     sitemapTag('/sitemaps/location-seo.xml'),
     sitemapTag('/sitemaps/location-only.xml'),
   ]);
@@ -318,6 +319,29 @@ export async function generateSkillsSitemap() {
 
 }
 
+/* =========================
+   TALENT PROFILES
+========================= */
 
+export async function generateTalentsSitemap() {
+  const rows = await runPgStatement({
+    query: `
+      SELECT username, updated_at
+      FROM talent_profiles
+      WHERE status = 'published' AND username IS NOT NULL
+    `,
+  });
+
+  const items = rows.map((r) =>
+    urlTag({
+      loc: `/p/${r.username}`,
+      lastmod: r.updated_at ? new Date(r.updated_at).toISOString().split('T')[0] : today(),
+      changefreq: 'weekly',
+      priority: 0.7,
+    })
+  );
+
+  return wrapUrlSet(items);
+}
 
 

@@ -1,5 +1,6 @@
 import express from 'express';
 import { isIP } from 'net';
+import rateLimit from 'express-rate-limit';
 import {
   getJobDetails,
   getJobList,
@@ -16,17 +17,11 @@ const router = express.Router();
 
 const REPORT_REASONS = new Set(['position_filled', 'link_broken', 'spam', 'other']);
 
+// req.ip is Express's trust-proxy-aware resolved client IP (see server.js's
+// `trust proxy: 1`) — NOT the raw X-Forwarded-For header, which a client can
+// set to anything before it reaches nginx and would defeat per-IP dedup.
 function normalizeIpAddress(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  let candidate = '';
-
-  if (typeof forwarded === 'string') {
-    candidate = forwarded.split(',')[0].trim();
-  } else if (Array.isArray(forwarded) && forwarded.length > 0) {
-    candidate = String(forwarded[0]).split(',')[0].trim();
-  } else if (typeof req.ip === 'string') {
-    candidate = req.ip.trim();
-  }
+  let candidate = typeof req.ip === 'string' ? req.ip.trim() : '';
 
   if (candidate.startsWith('::ffff:')) {
     candidate = candidate.slice(7);
@@ -34,6 +29,14 @@ function normalizeIpAddress(req) {
 
   return isIP(candidate) ? candidate : null;
 }
+
+const reportLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many reports. Please try again later.' },
+});
 
 router.get('/details', async (req, res) => {
   try {
@@ -100,7 +103,7 @@ router.post('/view', async (req, res) => {
   }
 });
 
-router.post('/report', async (req, res) => {
+router.post('/report', reportLimiter, async (req, res) => {
   try {
     const { slug, reason, details } = req.body || {};
 

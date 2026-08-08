@@ -387,6 +387,22 @@ class JobsDao extends PostgresDao {
     salaryStatsCache = null;
   }
 
+  // Top domains by new-job count since `sinceDate` — used for the weekly
+  // summary email's platform-level "what's new" section.
+  async getTrendingDomainsSince(sinceDate, limit = 5) {
+    return this.getQ({
+      sql: `
+        SELECT domain, COUNT(*)::int AS count
+        FROM jobs
+        WHERE is_active = true AND created_at >= $1 AND domain IS NOT NULL
+        GROUP BY domain
+        ORDER BY count DESC
+        LIMIT $2
+      `,
+      values: [sinceDate, limit],
+    });
+  }
+
   async getSalaryInsightsJobs({ filters = {}, page = 1, limit = 20, sort = 'salary_desc' }) {
     const whereClauses = [
       `j.platform = 'ashby'`,

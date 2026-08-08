@@ -4,7 +4,7 @@ import { backfillSkillsFromStoredDescriptions } from '../services/backfillServic
 import { insertGreenhouseJobsDaily , insertWorkableJobsDaily , insertYCJobsDaily} from "../services/dailyService.js";
 import { runCronJob } from '../services/cronRunner.js';
 import { JOBS, getNextRunTime } from '../services/cronScheduler.js';
-import { defaultPgDao } from '../dao/dao.js';
+import { defaultPgDao, runPgStatement } from '../dao/dao.js';
 
 const router = express.Router();
 
@@ -162,13 +162,14 @@ router.get('/status', async (req, res) => {
 // View run history
 router.get('/runs', async (req, res) => {
   const tag = req.query.tag;
-  const where = tag ? `tag = '${tag}'` : undefined;
-  const rows = await defaultPgDao.getAllRows({
-    tableName: 'cron_runs',
-    where,
-    orderBy: 'id DESC',
-    limit: 50,
-  });
+  const rows = tag
+    ? await runPgStatement({
+        query: `SELECT * FROM cron_runs WHERE tag = $1 ORDER BY id DESC LIMIT 50`,
+        values: [tag],
+      })
+    : await runPgStatement({
+        query: `SELECT * FROM cron_runs ORDER BY id DESC LIMIT 50`,
+      });
   res.json(rows);
 });
 

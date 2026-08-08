@@ -1,8 +1,17 @@
 import express from 'express';
 import { isIP } from 'node:net';
+import rateLimit from 'express-rate-limit';
 import { runPgStatement } from '../dao/dao.js';
 
 const router = express.Router();
+
+const feedbackLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many submissions. Please try again later.' },
+});
 
 const ALLOWED_ROLES = new Set(['candidate', 'hiring', 'other', 'unknown']);
 const ALLOWED_CATEGORIES = new Set(['bug', 'feature', 'data-issue', 'ux', 'other']);
@@ -32,17 +41,10 @@ function normalizeRating(value) {
   return parsed;
 }
 
+// req.ip is Express's trust-proxy-aware resolved client IP, not the raw
+// (client-spoofable) X-Forwarded-For header.
 function normalizeIpAddress(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  let candidate = '';
-
-  if (typeof forwarded === 'string') {
-    candidate = forwarded.split(',')[0].trim();
-  } else if (Array.isArray(forwarded) && forwarded.length > 0) {
-    candidate = String(forwarded[0]).split(',')[0].trim();
-  } else if (typeof req.ip === 'string') {
-    candidate = req.ip.trim();
-  }
+  let candidate = typeof req.ip === 'string' ? req.ip.trim() : '';
 
   if (candidate.startsWith('::ffff:')) {
     candidate = candidate.slice(7);
@@ -51,7 +53,7 @@ function normalizeIpAddress(req) {
   return isIP(candidate) ? candidate : null;
 }
 
-router.post('/', async (req, res) => {
+router.post('/', feedbackLimiter, async (req, res) => {
   try {
     const body = req.body || {};
     const message = normalizeOptionalText(body.message);

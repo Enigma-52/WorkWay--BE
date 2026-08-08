@@ -38,6 +38,15 @@ class SavedJobsDao extends PostgresDao {
       firstResultOnly: true,
     });
   }
+
+  async countByUserSince(userId, sinceDate) {
+    const row = await this.getQ({
+      sql: `SELECT COUNT(*)::int AS count FROM saved_jobs WHERE user_id = $1 AND saved_at >= $2`,
+      values: [userId, sinceDate],
+      firstResultOnly: true,
+    });
+    return row?.count ?? 0;
+  }
 }
 
 export const savedJobsDao = new SavedJobsDao();

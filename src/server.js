@@ -2,6 +2,7 @@ import './otel.js';
 import dns from 'dns';
 dns.setDefaultResultOrder('ipv4first');
 
+import crypto from 'crypto';
 import express from 'express';
 import session from 'express-session';
 import passport from 'passport';
@@ -25,8 +26,11 @@ app.set('trust proxy', 1);
 
 // Middleware
 app.use(express.json());
+// A hardcoded fallback here would let anyone forge a valid session cookie.
+// A random per-boot secret is a safe failure mode if the env var is missing:
+// existing sessions get invalidated on restart instead of being forgeable.
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'dev-secret',
+  secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
   resave: false,
   saveUninitialized: false,
 }));

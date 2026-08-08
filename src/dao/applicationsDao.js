@@ -38,6 +38,15 @@ class ApplicationsDao extends PostgresDao {
     });
   }
 
+  async countByUserSince(userId, sinceDate) {
+    const row = await this.getQ({
+      sql: `SELECT COUNT(*)::int AS count FROM job_applications WHERE user_id = $1 AND applied_at >= $2`,
+      values: [userId, sinceDate],
+      firstResultOnly: true,
+    });
+    return row?.count ?? 0;
+  }
+
   async getByUser(userId) {
     return this.getQ({
       sql: `SELECT * FROM job_applications WHERE user_id = $1 ORDER BY applied_at DESC`,

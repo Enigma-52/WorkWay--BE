@@ -6,6 +6,7 @@ import {
   generateDomainsSitemap,
   generateJobsSitemap,
   generateSkillsSitemap,
+  generateTalentsSitemap,
   generateLocationSeoSitemap,
   generateLocationOnlySitemap,
 } from '../services/sitemapService.js';
@@ -49,6 +50,13 @@ router.get('/sitemaps/jobs.xml', async (req, res) => {
 
 router.get('/sitemaps/skills.xml', async (req, res) => {
   const xml = await generateSkillsSitemap();
+  res.setHeader('Content-Type', 'application/xml');
+  res.status(200).send(xml);
+});
+
+/* Talent profiles (published only) */
+router.get('/sitemaps/talents.xml', async (req, res) => {
+  const xml = await generateTalentsSitemap();
   res.setHeader('Content-Type', 'application/xml');
   res.status(200).send(xml);
 });

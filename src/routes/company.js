@@ -6,6 +6,7 @@ import {
   generateCompanyEmbeddings,
   getCompanyJobs,
 } from '../services/companyService.js';
+import { requireInternalSecret } from '../utils/internalAuth.js';
 
 const router = express.Router();
 
@@ -81,7 +82,7 @@ router.get('/overview', async (req, res) => {
   }
 });
 
-router.get('/generate-embeddings', async (req, res) => {
+router.get('/generate-embeddings', requireInternalSecret, async (req, res) => {
   try {
     const result = await generateCompanyEmbeddings();
     res.json(result);

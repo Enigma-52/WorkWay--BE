@@ -1,11 +1,21 @@
 import express from 'express';
 import { usersDao } from '../dao/usersDao.js';
+import { sendWelcomeEmail } from '../services/lifecycleEmailService.js';
+import { verifyUnsubscribeToken } from '../utils/unsubscribeToken.js';
+import { requireInternalSecret } from '../utils/internalAuth.js';
 import { logger } from '../utils/logger.js';
 
 const router = express.Router();
 
-// Called by NextAuth jwt callback to upsert user and return roles
-router.post('/sync', async (req, res) => {
+function fireWelcomeEmailIfNew(user) {
+  if (!user?.is_new) return;
+  sendWelcomeEmail(user).catch((err) =>
+    logger.error('welcome email send failed', { userId: user.id, error: err.message })
+  );
+}
+
+// Called by NextAuth jwt callback (server-side only) to upsert user and return roles
+router.post('/sync', requireInternalSecret, async (req, res) => {
   const { email, display_name, first_name, last_name, avatar_url } = req.body;
 
   if (!email) {
@@ -21,6 +31,7 @@ router.post('/sync', async (req, res) => {
       lastName: last_name ?? null,
       avatarUrl: avatar_url ?? null,
     });
+    fireWelcomeEmailIfNew(user);
     return res.json({ success: true, user });
   } catch (err) {
     logger.error('user sync failed', { error: err.message });
@@ -28,12 +39,35 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+// GET /unsubscribe?uid=&token= — one-click unsubscribe link from weekly summary emails
+router.get('/unsubscribe', async (req, res) => {
+  const { uid, token } = req.query;
+  if (!uid || !token || !verifyUnsubscribeToken(uid, token)) {
+    return res.status(400).send('Invalid or expired unsubscribe link.');
+  }
+
+  try {
+    await usersDao.setEmailsOptedOut(uid, true);
+    res.send('You have been unsubscribed from WorkWay weekly summary emails.');
+  } catch (err) {
+    logger.error('unsubscribe failed', { error: err.message, uid });
+    res.status(500).send('Something went wrong. Please try again later.');
+  }
+});
+
+// Never allow arbitrary role strings here — "admin" must only ever be
+// granted directly in the database, never through a public API.
+const ONBOARDING_ROLES = new Set(['seeker', 'hirer']);
+
 // Called by onboarding to save role + display_name
 router.patch('/me', async (req, res) => {
   const { email, role, display_name } = req.body;
 
   if (!email || !role) {
     return res.status(400).json({ success: false, message: 'email and role required' });
+  }
+  if (!ONBOARDING_ROLES.has(role)) {
+    return res.status(400).json({ success: false, message: `role must be one of: ${[...ONBOARDING_ROLES].join(', ')}` });
   }
 
   try {

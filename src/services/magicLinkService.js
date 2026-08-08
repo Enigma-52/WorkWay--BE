@@ -5,6 +5,7 @@ import { magicLinksDao } from '../dao/magicLinksDao.js';
 import { usersDao } from '../dao/usersDao.js';
 import { logger } from '../utils/logger.js';
 import { magicLinkEmailHtml } from '../utils/emailTemplates.js';
+import { sendWelcomeEmail } from './lifecycleEmailService.js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
@@ -71,6 +72,12 @@ export async function verifyMagicLink({ token }) {
 
   if (!user) {
     throw new Error('Failed to create or retrieve user');
+  }
+
+  if (user.is_new) {
+    sendWelcomeEmail(user).catch((err) =>
+      logger.error('welcome email send failed', { userId: user.id, error: err.message })
+    );
   }
 
   logger.info('Magic link verified', { email: row.email, userId: user.id });
