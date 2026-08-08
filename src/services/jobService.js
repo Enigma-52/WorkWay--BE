@@ -2,6 +2,7 @@ import { jobsDao, DEFAULT_LIMIT, MAX_LIMIT } from '../dao/jobsDao.js';
 import { getSkillBySlug } from '../data/skills.js';
 import { JOB_DOMAINS, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../utils/constants.js';
 import { pickRelevantDescriptionSections } from '../utils/helper.js';
+import { isValidCountryCode } from '../utils/countryAliases.js';
 
 // The global (fully unfiltered) total count and facet breakdown only change
 // when the ingestion crons run (every few hours), but were being recomputed
@@ -19,6 +20,7 @@ function isUnfilteredQuery(filters) {
     !filters.employment_type &&
     !filters.experience_level &&
     !filters.location &&
+    !filters.country &&
     !filters.company_slug &&
     !filters.skill_slug &&
     !filters.posted_since
@@ -261,6 +263,19 @@ export function normalizeAndValidateListParams(query) {
   const location = typeof query.location === 'string' ? query.location.trim() : '';
   const companySlug = typeof query.company_slug === 'string' ? query.company_slug.trim() : '';
 
+  const countryRaw = typeof query.country === 'string' ? query.country.trim().toUpperCase() : '';
+  let country = null;
+  if (countryRaw && countryRaw !== 'ALL') {
+    if (!isValidCountryCode(countryRaw)) {
+      return {
+        error: true,
+        status: 400,
+        message: `Invalid country: ${query.country}. Use a valid ISO alpha-3 code or 'all'.`,
+      };
+    }
+    country = countryRaw;
+  }
+
   const POSTED_MAP = { today: 1, '3d': 3, '7d': 7, '30d': 30 };
   const postedRaw = typeof query.posted === 'string' ? query.posted.trim().toLowerCase() : '';
   let postedSince = null;
@@ -277,6 +292,7 @@ export function normalizeAndValidateListParams(query) {
     employment_type: employmentType,
     experience_level: experienceLevel,
     location: location || null,
+    country,
     company_slug: companySlug || null,
     skill_slug: skill_slug,
     posted_since: postedSince,
@@ -299,6 +315,7 @@ export function normalizeAndValidateListParams(query) {
           ? 'all'
           : (experienceLevel ?? experienceLevelRaw),
       location: location || undefined,
+      country: country || 'all',
       company_slug: companySlug || undefined,
       skill: skill_slug ?? undefined,
       posted: postedRaw && postedRaw !== 'all' ? postedRaw : undefined,

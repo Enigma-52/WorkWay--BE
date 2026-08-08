@@ -1,4 +1,5 @@
 import PostgresDao from './dao.js';
+import { getCountryLocationPatterns } from '../utils/countryAliases.js';
 
 const JOB_FEED_COLS =
   'j.id,j.company_id,j.company,j.slug,j.platform,j.title,j.url,j.experience_level,j.employment_type,j.location,j.domain,j.skills,j.updated_at,j.metadata';
@@ -15,7 +16,7 @@ const MAX_LIMIT = 50;
  * @returns {{ whereClauses: string[], values: any[] }}
  */
 function buildListWhere(filters, opts = {}) {
-  const whereClauses = [];
+  const whereClauses = ['j.is_active = true'];
   const values = [];
   let paramIndex = 1;
 
@@ -55,6 +56,18 @@ function buildListWhere(filters, opts = {}) {
     whereClauses.push(`j.location ILIKE $${paramIndex}`);
     values.push(`%${filters.location.trim().replace(/%/g, '\\%')}%`);
     paramIndex += 1;
+  }
+
+  if (filters.country != null && filters.country.trim() !== '') {
+    const patterns = getCountryLocationPatterns(filters.country);
+    if (patterns.length) {
+      // Word-boundary regex (Postgres's \y), not a plain substring ILIKE — otherwise
+      // "India" would also match "Indianapolis", "Indiana", etc. Still uses the
+      // location trigram GIN index since pg_trgm accelerates ~* as well as LIKE.
+      const clause = patterns.map(() => `j.location ~* $${paramIndex++}`).join(' OR ');
+      whereClauses.push(`(${clause})`);
+      patterns.forEach((p) => values.push(`\\y${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\y`));
+    }
   }
 
   if (filters.company_slug != null && filters.company_slug.trim() !== '') {
