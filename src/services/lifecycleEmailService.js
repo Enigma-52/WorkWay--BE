@@ -10,11 +10,12 @@ import {
   welcomeEmailHtml,
   feedbackRequestEmailHtml,
   weeklySummaryEmailHtml,
+  EMAIL_FROM,
 } from '../utils/emailTemplates.js';
 import { logger } from '../utils/logger.js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.RESEND_FROM_EMAIL || 'noreply@workway.dev';
+const FROM = EMAIL_FROM;
 const SITE_URL = process.env.FRONTEND_ORIGIN || 'https://www.workway.dev';
 const LIFECYCLE_FLAG = 'lifecycle_emails_enabled';
 
