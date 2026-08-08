@@ -1,4 +1,5 @@
 import express from 'express';
+import { isIP } from 'net';
 import {
   getJobDetails,
   getJobList,
@@ -7,9 +8,32 @@ import {
   normalizeAndValidateListParams,
 } from '../services/jobService.js';
 import { recordJobView } from '../services/jobViewEventsService.js';
+import { jobsDao } from '../dao/jobsDao.js';
+import { jobReportsDao } from '../dao/jobReportsDao.js';
 import { logger } from '../utils/logger.js';
 
 const router = express.Router();
+
+const REPORT_REASONS = new Set(['position_filled', 'link_broken', 'spam', 'other']);
+
+function normalizeIpAddress(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  let candidate = '';
+
+  if (typeof forwarded === 'string') {
+    candidate = forwarded.split(',')[0].trim();
+  } else if (Array.isArray(forwarded) && forwarded.length > 0) {
+    candidate = String(forwarded[0]).split(',')[0].trim();
+  } else if (typeof req.ip === 'string') {
+    candidate = req.ip.trim();
+  }
+
+  if (candidate.startsWith('::ffff:')) {
+    candidate = candidate.slice(7);
+  }
+
+  return isIP(candidate) ? candidate : null;
+}
 
 router.get('/details', async (req, res) => {
   try {
@@ -73,6 +97,45 @@ router.post('/view', async (req, res) => {
       error: 'Internal server error',
       message: err?.message ?? 'Failed to record job view',
     });
+  }
+});
+
+router.post('/report', async (req, res) => {
+  try {
+    const { slug, reason, details } = req.body || {};
+
+    if (!slug || typeof slug !== 'string') {
+      return res.status(400).json({ error: 'slug is required' });
+    }
+    if (!REPORT_REASONS.has(reason)) {
+      return res.status(400).json({ error: `reason must be one of: ${[...REPORT_REASONS].join(', ')}` });
+    }
+
+    const job = await jobsDao.getRow({ where: { slug } });
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+
+    const reporterIp = normalizeIpAddress(req);
+    const report = await jobReportsDao.create({
+      jobId: job.id,
+      reason,
+      details: typeof details === 'string' ? details.slice(0, 500) : null,
+      reporterIp,
+    });
+
+    if (!report) {
+      // Same IP already reported this job — treat as a no-op success, not an error.
+      return res.json({ success: true, already_reported: true });
+    }
+
+    const deactivated = await jobReportsDao.maybeDeactivate(job.id);
+    if (deactivated) {
+      logger.info('Job auto-deactivated from reports', { jobId: job.id, slug });
+    }
+
+    res.status(201).json({ success: true, already_reported: false });
+  } catch (err) {
+    logger.error('POST /api/job/report error', { error: err.message });
+    res.status(500).json({ error: 'Internal server error', message: err?.message });
   }
 });
 
