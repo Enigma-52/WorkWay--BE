@@ -10,7 +10,7 @@ import { initPg } from './utils/initializers/postgres.js';
 import { config } from './config.js';
 import routes from './routes/index.js';
 import { runPgStatement } from './dao/dao.js';
-import { initGoogleAuth } from './services/authService.js';
+import { initPassportSession } from './services/authService.js';
 import { startCronScheduler } from './services/cronScheduler.js';
 
 
@@ -25,7 +25,7 @@ app.use(session({
   saveUninitialized: false,
 }));
 
-initGoogleAuth();
+initPassportSession();
 app.use(passport.initialize());
 app.use(passport.session());
 
