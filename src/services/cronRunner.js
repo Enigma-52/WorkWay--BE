@@ -39,6 +39,23 @@ export async function runCronJob({ tag, fn, dryRun = false, force = false }) {
     }
   }
 
+  // Refuse to start a second overlapping run of the same tag. This was a
+  // latent gap even before manual triggering had a UI (only reachable by
+  // knowing the raw internal-secret-gated URL); the admin panel's one-click
+  // "Run now" button makes rapid double-triggering (a double click, a stuck
+  // network retry) practically likely enough to guard against explicitly,
+  // not just theoretically possible.
+  if (!dryRun) {
+    const alreadyRunning = await defaultPgDao.getQ({
+      sql: `SELECT id FROM cron_runs WHERE tag = $1 AND status = 'started' AND finished_at IS NULL LIMIT 1`,
+      values: [tag],
+    });
+    if (alreadyRunning.length > 0) {
+      console.log(`[CRON] ${tag} is already running (run #${alreadyRunning[0].id}), skipping`);
+      return { tag, status: 'already_running', runId: alreadyRunning[0].id };
+    }
+  }
+
   // Insert a run record
   const inserted = await defaultPgDao.getQ({
     sql: `INSERT INTO cron_runs (tag, status, dry_run, started_at)

@@ -5,6 +5,7 @@ import { insertGreenhouseJobsDaily , insertWorkableJobsDaily , insertYCJobsDaily
 import { runCronJob } from '../services/cronRunner.js';
 import { JOBS, getNextRunTime } from '../services/cronScheduler.js';
 import { defaultPgDao, runPgStatement } from '../dao/dao.js';
+import { requireAdmin } from '../utils/roles.js';
 
 const router = express.Router();
 
@@ -85,9 +86,16 @@ router.get('/daily_yc', async (req, res) => {
 });
 
 /// Cron Runner ///
+//
+// The routes below are reachable through the admin panel's Next.js BFF
+// (src/app/api/admin/cron/*), which already checks the caller has an admin
+// session before forwarding — but that forward is authenticated only by the
+// shared internal secret, which proves "this came from our own server," not
+// "this specific user is an admin." requireAdmin re-verifies the latter
+// independently, same belt-and-suspenders pattern as routes/admin.js.
 
 // Manually trigger any registered job by tag — ?dry=true for dry run, ?force=true to bypass disabled
-router.get('/run/:tag', async (req, res) => {
+router.get('/run/:tag', requireAdmin, async (req, res) => {
   const { tag } = req.params;
   const dryRun = req.query.dry === 'true';
   const force = req.query.force === 'true';
@@ -99,25 +107,28 @@ router.get('/run/:tag', async (req, res) => {
 });
 
 // Enable or disable a cron job — /toggle/daily_yc?enabled=false
-router.get('/toggle/:tag', async (req, res) => {
+router.get('/toggle/:tag', requireAdmin, async (req, res) => {
   const { tag } = req.params;
+  const job = JOBS.find((j) => j.tag === tag);
+  if (!job) return res.status(404).json({ error: `Unknown job tag: ${tag}` });
+
   const enabled = req.query.enabled !== 'false'; // defaults to true
   await defaultPgDao.getQ({
     sql: `INSERT INTO cron_config (tag, enabled) VALUES ($1, $2)
           ON CONFLICT (tag) DO UPDATE SET enabled = $2`,
-    values: [tag, enabled],
+    values: [job.tag, enabled],
   });
-  res.json({ tag, enabled });
+  res.json({ tag: job.tag, enabled });
 });
 
 // View all cron config flags
-router.get('/config', async (req, res) => {
+router.get('/config', requireAdmin, async (req, res) => {
   const rows = await defaultPgDao.getAllRows({ tableName: 'cron_config' });
   res.json(rows);
 });
 
 // Status of all jobs — next run time + currently running
-router.get('/status', async (req, res) => {
+router.get('/status', requireAdmin, async (req, res) => {
   const now = new Date();
 
   // Check which jobs are currently running (status = 'started' and no finished_at)
@@ -160,7 +171,7 @@ router.get('/status', async (req, res) => {
 });
 
 // View run history
-router.get('/runs', async (req, res) => {
+router.get('/runs', requireAdmin, async (req, res) => {
   const tag = req.query.tag;
   const rows = tag
     ? await runPgStatement({
