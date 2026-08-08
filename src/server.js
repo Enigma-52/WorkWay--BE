@@ -13,6 +13,7 @@ import routes from './routes/index.js';
 import { runPgStatement } from './dao/dao.js';
 import { initPassportSession } from './services/authService.js';
 import { startCronScheduler } from './services/cronScheduler.js';
+import dodoWebhookRoutes from './routes/dodoWebhook.js';
 
 
 const app = express();
@@ -23,6 +24,12 @@ const PORT = process.env.PORT || 3000;
 // req.ip / X-Forwarded-For based rate limiting sees the real client, not
 // nginx's own address.
 app.set('trust proxy', 1);
+
+// Dodo's webhook signature covers the exact raw bytes of the request body,
+// so this must be mounted with a raw-body parser BEFORE the global
+// express.json() below, which would otherwise re-serialize the body and
+// break signature verification.
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }), dodoWebhookRoutes);
 
 // Middleware
 app.use(express.json());
