@@ -4,6 +4,7 @@ import { Resend } from 'resend';
 import { magicLinksDao } from '../dao/magicLinksDao.js';
 import { usersDao } from '../dao/usersDao.js';
 import { logger } from '../utils/logger.js';
+import { magicLinkEmailHtml } from '../utils/emailTemplates.js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
@@ -27,11 +28,7 @@ export async function sendMagicLink({ email, ipAddress, userAgent }) {
     from: process.env.RESEND_FROM_EMAIL || 'noreply@workway.dev',
     to: email,
     subject: 'Your WorkWay sign-in link',
-    html: `
-      <p>Click the link below to sign in to WorkWay. This link expires in 15 minutes and can only be used once.</p>
-      <p><a href="${link}">Sign in to WorkWay</a></p>
-      <p>If you didn't request this, you can safely ignore this email.</p>
-    `,
+    html: magicLinkEmailHtml({ link }),
   });
 
   if (error) {
