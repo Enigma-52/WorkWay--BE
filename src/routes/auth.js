@@ -16,8 +16,19 @@ const magicLinkSendLimiter = rateLimit({
 
 // ── Magic Links ───────────────────────────────────────────────────────────────
 
+// Only ever a same-origin relative path — never let a client-supplied value
+// become an absolute/protocol-relative URL embedded in an emailed link.
+// Rejects "//host" (protocol-relative) and "/\host" (some browsers normalize
+// a leading backslash to a forward slash, turning it into "//host" too).
+function sanitizeCallbackUrl(value) {
+  if (typeof value !== 'string') return null;
+  if (!value.startsWith('/')) return null;
+  if (value.startsWith('//') || value.startsWith('/\\')) return null;
+  return value;
+}
+
 router.post('/magic-link/send', magicLinkSendLimiter, async (req, res) => {
-  const { email } = req.body;
+  const { email, callback_url: callbackUrl } = req.body;
 
   if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ success: false, message: 'A valid email is required' });
@@ -37,6 +48,7 @@ router.post('/magic-link/send', magicLinkSendLimiter, async (req, res) => {
       email: normalizedEmail,
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
+      callbackUrl: sanitizeCallbackUrl(callbackUrl),
     });
     res.json({ success: true, message: 'Magic link sent — check your email' });
   } catch (err) {

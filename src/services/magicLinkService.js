@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 import { magicLinksDao } from '../dao/magicLinksDao.js';
 import { usersDao } from '../dao/usersDao.js';
 import { logger } from '../utils/logger.js';
-import { magicLinkEmailHtml } from '../utils/emailTemplates.js';
+import { magicLinkEmailHtml, EMAIL_FROM } from '../utils/emailTemplates.js';
 import { sendWelcomeEmail } from './lifecycleEmailService.js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -16,17 +16,23 @@ function generateToken() {
   return { raw, hash };
 }
 
-export async function sendMagicLink({ email, ipAddress, userAgent }) {
+export async function sendMagicLink({ email, ipAddress, userAgent, callbackUrl }) {
   const { raw, hash } = generateToken();
   const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
 
   const insertedRow = await magicLinksDao.insert({ email, tokenHash: hash, expiresAt, ipAddress, userAgent });
 
   const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:3001';
-  const link = `${frontendOrigin}/auth/verify?token=${raw}`;
+  // Carries the visitor's original destination (e.g. a Pro alert email
+  // linking straight to /dashboard/seeker/alerts) through the click-email
+  // round trip — the token alone has no way to remember where sign-in was
+  // triggered from, since verification happens on a different page/request.
+  const link = callbackUrl
+    ? `${frontendOrigin}/auth/verify?token=${raw}&callbackUrl=${encodeURIComponent(callbackUrl)}`
+    : `${frontendOrigin}/auth/verify?token=${raw}`;
 
   const { error } = await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL || 'noreply@workway.dev',
+    from: EMAIL_FROM,
     to: email,
     subject: 'Your WorkWay sign-in link',
     html: magicLinkEmailHtml({ link }),
