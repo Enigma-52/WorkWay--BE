@@ -17,6 +17,12 @@ import { startCronScheduler } from './services/cronScheduler.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Behind nginx (which itself sits behind Cloudflare and resolves the real
+// client IP via CF-Connecting-IP already) — trust exactly one hop so
+// req.ip / X-Forwarded-For based rate limiting sees the real client, not
+// nginx's own address.
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(express.json());
 app.use(session({

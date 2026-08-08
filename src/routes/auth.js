@@ -1,12 +1,22 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { logger } from '../utils/logger.js';
 import { sendMagicLink, verifyMagicLink } from '../services/magicLinkService.js';
+import { isAllowedEmailDomain } from '../utils/allowedEmailDomains.js';
 
 const router = express.Router();
 
+const magicLinkSendLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many sign-in attempts. Please try again in a few minutes.' },
+});
+
 // ── Magic Links ───────────────────────────────────────────────────────────────
 
-router.post('/magic-link/send', async (req, res) => {
+router.post('/magic-link/send', magicLinkSendLimiter, async (req, res) => {
   const { email } = req.body;
 
   if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -14,6 +24,13 @@ router.post('/magic-link/send', async (req, res) => {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+
+  if (!isAllowedEmailDomain(normalizedEmail)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please use a personal email from a supported provider (Gmail, Yahoo, Outlook, Proton, iCloud, etc.), or sign in with Google instead.',
+    });
+  }
 
   try {
     await sendMagicLink({
