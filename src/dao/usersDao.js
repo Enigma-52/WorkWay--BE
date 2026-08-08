@@ -26,6 +26,7 @@ const UPSERT_USER_SQL = `
     last_name,
     avatar_url,
     roles,
+    plan_key,
     created_at,
     updated_at,
     (xmax = 0) AS is_new
@@ -41,6 +42,7 @@ const GET_BY_EMAIL_SQL = `
     last_name,
     avatar_url,
     roles,
+    plan_key,
     created_at,
     updated_at
   FROM users
@@ -72,9 +74,64 @@ class UsersDao extends PostgresDao {
   async getById(id) {
     return this.getQ({
       sql: `SELECT id, email, email_verified, display_name, first_name, last_name,
-                   avatar_url, roles, emails_opted_out, created_at, updated_at
+                   avatar_url, roles, plan_key, emails_opted_out, created_at, updated_at
             FROM users WHERE id = $1`,
       values: [id],
+      firstResultOnly: true,
+    });
+  }
+
+  async setPlanKey(userId, planKey) {
+    return this.getQ({
+      sql: `UPDATE users SET plan_key = $1, updated_at = now() WHERE id = $2 RETURNING id, plan_key`,
+      values: [planKey, userId],
+      firstResultOnly: true,
+    });
+  }
+
+  // Search by email or display name for the admin panel's user picker.
+  async search(query, limit = 20) {
+    const pattern = `%${String(query).trim().replace(/%/g, '\\%')}%`;
+    return this.getQ({
+      sql: `
+        SELECT id, email, display_name, roles, plan_key, created_at
+        FROM users
+        WHERE email ILIKE $1 OR display_name ILIKE $1
+        ORDER BY created_at DESC
+        LIMIT $2
+      `,
+      values: [pattern, limit],
+    });
+  }
+
+  async addRole(userId, role) {
+    return this.getQ({
+      sql: `
+        UPDATE users
+        SET roles = (
+          CASE WHEN roles @> to_jsonb($1::text)
+            THEN roles
+            ELSE roles || to_jsonb($1::text)
+          END
+        ), updated_at = now()
+        WHERE id = $2
+        RETURNING id, email, roles
+      `,
+      values: [role, userId],
+      firstResultOnly: true,
+    });
+  }
+
+  async removeRole(userId, role) {
+    return this.getQ({
+      sql: `
+        UPDATE users
+        SET roles = (SELECT jsonb_agg(r) FROM jsonb_array_elements(roles) r WHERE r != to_jsonb($1::text)),
+            updated_at = now()
+        WHERE id = $2
+        RETURNING id, email, roles
+      `,
+      values: [role, userId],
       firstResultOnly: true,
     });
   }
