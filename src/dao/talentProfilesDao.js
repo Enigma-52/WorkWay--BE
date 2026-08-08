@@ -154,6 +154,8 @@ class TalentProfilesDao extends PostgresDao {
       experience_level,
       country,
       availability_status,
+      skills,
+      languages,
       sort = 'newest',
       page = 1,
       limit = 20,
@@ -192,6 +194,28 @@ class TalentProfilesDao extends PostgresDao {
     if (availability_status) {
       conditions.push(`availability_status = $${paramIndex}`);
       values.push(availability_status);
+      paramIndex++;
+    }
+
+    const skillsArr = Array.isArray(skills)
+      ? skills
+      : typeof skills === 'string' && skills
+        ? skills.split(',').map((s) => s.trim()).filter(Boolean)
+        : [];
+    if (skillsArr.length) {
+      conditions.push(`skills ?| $${paramIndex}::text[]`);
+      values.push(skillsArr);
+      paramIndex++;
+    }
+
+    const languagesArr = Array.isArray(languages)
+      ? languages
+      : typeof languages === 'string' && languages
+        ? languages.split(',').map((s) => s.trim()).filter(Boolean)
+        : [];
+    if (languagesArr.length) {
+      conditions.push(`languages ?| $${paramIndex}::text[]`);
+      values.push(languagesArr);
       paramIndex++;
     }
 
