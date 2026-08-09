@@ -106,6 +106,7 @@ export function generateStaticSitemap() {
     { loc: '/contact', changefreq: 'daily', priority: 0.8 },
     { loc: '/privacy-policy', changefreq: 'daily', priority: 0.8 },
     { loc: '/terms', changefreq: 'daily', priority: 0.8 },
+    { loc: '/refund-policy', changefreq: 'monthly', priority: 0.5 },
     { loc: '/disclaimer', changefreq: 'daily', priority: 0.8 },
     { loc: '/location-jobs', changefreq: 'daily', priority: 0.9 },
     { loc: '/jobs-by-location', changefreq: 'daily', priority: 0.9 },
