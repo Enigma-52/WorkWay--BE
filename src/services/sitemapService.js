@@ -100,7 +100,6 @@ export function generateStaticSitemap() {
     { loc: '/jobs', changefreq: 'daily', priority: 0.9 },
     { loc: '/talents', changefreq: 'daily', priority: 0.9 },
     { loc: '/pricing', changefreq: 'weekly', priority: 0.8 },
-    { loc: '/hireme', changefreq: 'daily', priority: 0.8 },
     { loc: '/skills', changefreq: 'daily', priority: 0.8 },
     { loc: '/changelog', changefreq: 'daily', priority: 0.8 },
     { loc: '/contact', changefreq: 'daily', priority: 0.8 },
