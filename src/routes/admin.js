@@ -6,6 +6,8 @@ import { subscriptionsDao } from '../dao/subscriptionsDao.js';
 import { grantPlan, cancelSubscription } from '../services/subscriptionsService.js';
 import { sendTestEmail } from '../services/lifecycleEmailService.js';
 import { sendTestCompanyAlertEmail } from '../services/companyAlertService.js';
+import { getAnalyticsOverview } from '../services/analyticsService.js';
+import { getMixpanelStats30d } from '../services/mixpanelStatsService.js';
 import { requireAdmin } from '../utils/roles.js';
 import { requireInternalSecret } from '../utils/internalAuth.js';
 import { logger } from '../utils/logger.js';
@@ -57,6 +59,18 @@ router.patch('/feature-flags/:key', requireAdmin, async (req, res) => {
     res.json({ success: true, flag });
   } catch (err) {
     logger.error('set feature flag failed', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /analytics/overview — GA4 (raw, includes bot traffic) alongside
+// Mixpanel's 30-day total (filters `is_bot`) for comparison.
+router.get('/analytics/overview', requireAdmin, async (req, res) => {
+  try {
+    const [ga4, mixpanel] = await Promise.all([getAnalyticsOverview(), getMixpanelStats30d()]);
+    res.json({ ...ga4, mixpanelLast30Days: mixpanel.configured ? mixpanel.last30Days : null });
+  } catch (err) {
+    logger.error('get analytics overview failed', { error: err.message });
     res.status(500).json({ error: err.message });
   }
 });

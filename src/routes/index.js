@@ -19,6 +19,7 @@ import seoRoutes from './seo.js';
 import scriptRoutes from './script.js'
 import talentProfilesRoutes from './talentProfiles.js';
 import adminRoutes from './admin.js';
+import analyticsRoutes from './analytics.js';
 import billingRoutes from './billing.js';
 import { requireInternalSecret } from '../utils/internalAuth.js';
 
@@ -48,6 +49,7 @@ router.use('/saved-jobs', savedJobsRoutes);
 router.use('/alerts', alertsRoutes);
 router.use('/talent-profiles', talentProfilesRoutes);
 router.use('/admin', adminRoutes);
+router.use('/analytics', analyticsRoutes);
 router.use('/billing', billingRoutes);
 
 router.use('/seo', seoRoutes);
