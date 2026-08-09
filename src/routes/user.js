@@ -39,6 +39,24 @@ router.post('/sync', requireInternalSecret, async (req, res) => {
   }
 });
 
+// GET /me?user_id= — lets the frontend detect when its cached session JWT
+// (plan_key, roles) has drifted from the DB, e.g. right after a Dodo
+// checkout or an admin-panel grant, neither of which updates the browser's
+// existing session cookie on their own.
+router.get('/me', async (req, res) => {
+  const { user_id } = req.query;
+  if (!user_id) return res.status(400).json({ error: 'user_id required' });
+
+  try {
+    const user = await usersDao.getById(user_id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ id: user.id, plan_key: user.plan_key, roles: user.roles, display_name: user.display_name });
+  } catch (err) {
+    logger.error('get /user/me failed', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /unsubscribe?uid=&token= — one-click unsubscribe link from weekly summary emails
 router.get('/unsubscribe', async (req, res) => {
   const { uid, token } = req.query;
