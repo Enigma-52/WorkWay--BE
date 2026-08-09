@@ -6,6 +6,9 @@ vi.mock('../../src/services/magicLinkService.js', () => ({
   sendMagicLink: vi.fn(),
   verifyMagicLink: vi.fn(),
 }));
+vi.mock('../../src/utils/turnstile.js', () => ({
+  verifyTurnstileToken: vi.fn(),
+}));
 
 // A fresh router (and therefore a fresh, un-hit rate limiter) per test, so
 // tests can't bleed rate-limit state into each other. Re-imports
@@ -17,6 +20,11 @@ async function buildApp() {
   vi.resetModules();
   const authRoutes = (await import('../../src/routes/auth.js')).default;
   const magicLinkService = await import('../../src/services/magicLinkService.js');
+  const turnstile = await import('../../src/utils/turnstile.js');
+  // Defaults to "human verified" so every test not specifically about
+  // Turnstile doesn't have to opt in — matches what a real solved challenge
+  // looks like from this route's perspective.
+  turnstile.verifyTurnstileToken.mockResolvedValue(true);
   const app = express();
   app.use(express.json());
   // Stand in for passport's req.login(), which the real app wires up via
@@ -26,7 +34,12 @@ async function buildApp() {
     next();
   });
   app.use('/api/auth', authRoutes);
-  return { app, sendMagicLink: magicLinkService.sendMagicLink, verifyMagicLink: magicLinkService.verifyMagicLink };
+  return {
+    app,
+    sendMagicLink: magicLinkService.sendMagicLink,
+    verifyMagicLink: magicLinkService.verifyMagicLink,
+    verifyTurnstileToken: turnstile.verifyTurnstileToken,
+  };
 }
 
 beforeEach(() => {
@@ -101,6 +114,43 @@ describe('POST /api/auth/magic-link/send — validation', () => {
     const res = await request(app).post('/api/auth/magic-link/send').send({ email: 'a@gmail.com' });
     expect(res.status).toBe(500);
     expect(JSON.stringify(res.body)).not.toContain('10.0.4.2');
+  });
+});
+
+describe('POST /api/auth/magic-link/send — Turnstile bot check', () => {
+  it('400s when the human-verification check fails, without sending a link', async () => {
+    const { app, sendMagicLink, verifyTurnstileToken } = await buildApp();
+    verifyTurnstileToken.mockResolvedValue(false);
+    const res = await request(app)
+      .post('/api/auth/magic-link/send')
+      .send({ email: 'a@gmail.com', turnstile_token: 'bad-or-missing' });
+
+    expect(res.status).toBe(400);
+    expect(sendMagicLink).not.toHaveBeenCalled();
+  });
+
+  it('passes the token and the real client IP through to verification', async () => {
+    const { app, sendMagicLink, verifyTurnstileToken } = await buildApp();
+    sendMagicLink.mockResolvedValue();
+    await request(app)
+      .post('/api/auth/magic-link/send')
+      .send({ email: 'a@gmail.com', turnstile_token: 'a-real-looking-token' });
+
+    expect(verifyTurnstileToken).toHaveBeenCalledWith('a-real-looking-token', expect.any(String));
+  });
+
+  it('is checked before the domain allowlist, so a bot cannot use the error message to probe allowed domains', async () => {
+    const { app, verifyTurnstileToken } = await buildApp();
+    verifyTurnstileToken.mockResolvedValue(false);
+    const res = await request(app)
+      .post('/api/auth/magic-link/send')
+      .send({ email: 'a@some-random-startup.io' });
+
+    // Should fail on the bot check, not "please use a personal email" —
+    // otherwise an unverified caller learns domain-allowlist information
+    // for free.
+    expect(res.status).toBe(400);
+    expect(res.body.message).not.toMatch(/personal email/i);
   });
 });
 

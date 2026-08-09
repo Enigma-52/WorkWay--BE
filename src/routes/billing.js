@@ -36,7 +36,17 @@ router.get('/plans', async (req, res) => {
 // POST /checkout — body: { user_id, plan_key, return_url? }
 // Reached only via the Next.js BFF (nginx routes /api/billing/checkout to the
 // session-checked frontend layer, same carve-out as saved-jobs/applications).
+// Off by default — flip to 'true' once Dodo live-mode verification clears.
+// The frontend already hides/disables the Subscribe button behind the same
+// switch; this is the server-side backstop in case that route is ever hit
+// directly instead of through the disabled button.
+const PAYMENTS_ENABLED = process.env.PAYMENTS_ENABLED === 'true';
+
 router.post('/checkout', async (req, res) => {
+  if (!PAYMENTS_ENABLED) {
+    return res.status(503).json({ error: 'Payments are not available yet. Check back soon.' });
+  }
+
   const { user_id, plan_key, return_url } = req.body;
   if (!user_id || !plan_key) {
     return res.status(400).json({ error: 'user_id and plan_key required' });

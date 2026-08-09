@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { logger } from '../utils/logger.js';
 import { sendMagicLink, verifyMagicLink } from '../services/magicLinkService.js';
 import { isAllowedEmailDomain } from '../utils/allowedEmailDomains.js';
+import { verifyTurnstileToken } from '../utils/turnstile.js';
 
 const router = express.Router();
 
@@ -28,10 +29,19 @@ function sanitizeCallbackUrl(value) {
 }
 
 router.post('/magic-link/send', magicLinkSendLimiter, async (req, res) => {
-  const { email, callback_url: callbackUrl } = req.body;
+  const { email, callback_url: callbackUrl, turnstile_token: turnstileToken } = req.body;
 
   if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ success: false, message: 'A valid email is required' });
+  }
+
+  // The rate limit above caps volume but doesn't stop scripted abuse within
+  // that limit — Turnstile verifies a real browser solved the challenge.
+  // Checked server-side; a client-side-only gate could be bypassed by
+  // calling this endpoint directly.
+  const humanVerified = await verifyTurnstileToken(turnstileToken, req.ip);
+  if (!humanVerified) {
+    return res.status(400).json({ success: false, message: 'Verification failed. Please try again.' });
   }
 
   const normalizedEmail = email.toLowerCase().trim();
