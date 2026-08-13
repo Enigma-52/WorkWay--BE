@@ -268,10 +268,10 @@ export async function generateLocationOnlySitemap() {
 }
 
 /* =========================
-   JOBS (MOST RECENT 50K)
+   JOBS (MOST RECENT 30K)
 ========================= */
 
-const RECENT_JOBS_LIMIT = 50000;
+const RECENT_JOBS_LIMIT = 30000;
 
 export async function generateJobsSitemap() {
   const rows = await runPgStatement({
