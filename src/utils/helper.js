@@ -23,7 +23,8 @@ export async function getJobDomain(title) {
     t.includes(' ml ') ||
     t.includes(' ai ') ||
     t.includes(' artificial intelligence ') ||
-    t.includes(' deep learning ')
+    t.includes(' deep learning ') ||
+    t.includes(' prompt ')
   )
     return 'AI / Data Science';
   if (
@@ -84,9 +85,59 @@ export async function getJobDomain(title) {
     t.includes(' legal ') ||
     t.includes(' counsel ') ||
     t.includes(' attorney ') ||
-    t.includes(' lawyer ')
+    t.includes(' lawyer ') ||
+    t.includes(' paralegal ') ||
+    t.includes(' litigation ')
   )
     return 'Legal';
+  if (
+    t.includes(' physician ') ||
+    t.includes(' nurse ') ||
+    t.includes(' nursing ') ||
+    t.includes(' dental ') ||
+    t.includes(' dentist ') ||
+    t.includes(' hygienist ') ||
+    t.includes(' medical assistant ') ||
+    t.includes(' physical therapist ') ||
+    t.includes(' occupational therapist ') ||
+    t.includes(' behavior technician ') ||
+    t.includes(' cna ') ||
+    t.includes(' veterinar ') ||
+    t.includes(' vet tech ') ||
+    t.includes(' health information ') ||
+    t.includes(' personal care ') ||
+    t.includes(' social worker ') ||
+    t.includes(' case manager ') ||
+    t.includes(' intervention specialist ') ||
+    // French home-care postings (Ouihelp and similar) — "auxiliaire de
+    // vie" (home health aide), "aide à/aux domicile/personnes" (in-home
+    // helper/elderly care aide), "assistant de vie" (care assistant).
+    t.includes(' auxiliaire de vie ') ||
+    t.includes(' aide à domicile ') ||
+    t.includes(' aide aux personnes ') ||
+    t.includes(' assistant de vie ') ||
+    t.includes(" assistant(e) de vie ")
+  )
+    return 'Healthcare';
+  if (
+    t.includes(' technician ') ||
+    t.includes(' mechanic ') ||
+    t.includes(' cdl ') ||
+    t.includes(' hvac ') ||
+    t.includes(' maintenance ') ||
+    t.includes(' landscape ') ||
+    t.includes(' automotive ') ||
+    t.includes(' heavy equipment ')
+  )
+    return 'Skilled Trades';
+  if (
+    t.includes(' teacher ') ||
+    t.includes(' teaching ') ||
+    t.includes(' instructional aide ') ||
+    t.includes(' preschool ') ||
+    t.includes(' classroom ')
+  )
+    return 'Education';
   if (
     t.includes(' design ') ||
     t.includes(' ux ') ||
@@ -110,10 +161,42 @@ export async function getJobDomain(title) {
     t.includes(' administrative ')
   )
     return 'Admin / Office';
-  if (t.includes(' AI ') || t.includes(' prompt ')) return 'AI';
+  if (
+    t.includes(' leasing consultant ') ||
+    t.includes(' rental coordinator ') ||
+    t.includes(' real estate ') ||
+    t.includes(' property manager ') ||
+    t.includes(' leasing ')
+  )
+    return 'Real Estate';
+  if (
+    t.includes(' store associate ') ||
+    t.includes(' store manager ') ||
+    t.includes(' merchandiser ') ||
+    t.includes(' brand ambassador ') ||
+    t.includes(' cashier ') ||
+    t.includes(' retail ') ||
+    t.includes(' barista ') ||
+    t.includes(' hospitality ')
+  )
+    return 'Retail / Hospitality';
+  // Deliberately specific multi-word phrases here, not a bare " manager "
+  // keyword — that would swallow titles already correctly routed above
+  // (Engineering Manager, Product Manager, Office Manager, etc.).
+  if (
+    t.includes(' general manager ') ||
+    t.includes(' assistant general manager ') ||
+    t.includes(' chief of staff ') ||
+    t.includes(' service manager ') ||
+    t.includes(' district manager ') ||
+    t.includes(' regional manager ') ||
+    t.includes(' branch manager ')
+  )
+    return 'Management';
   if (t.includes(' engineering ')) return 'Software Engineering';
   if (t.includes(' analyst ')) return 'Analyst';
-  if (t.includes(' engineer ')) return 'Software Engineering';
+  if (t.includes(' engineer ') || t.includes(' solutions architect '))
+    return 'Software Engineering';
   if (t.includes(' researcher ') || t.includes(' research ')) return 'Research';
   return 'Other';
 }
