@@ -229,6 +229,15 @@ export async function parseGreenhouseJobDescription(rawHtml) {
     sections.push(currentSection);
   }
 
+  // Some ATS platforms render duplicate DOM for the same content (e.g. a
+  // hidden mobile-view copy alongside the desktop one) — cheerio has no CSS
+  // awareness so both get scraped, producing sections like "Job Details":
+  // ["W2 Employee", "Full-Time", "100% Remote", "W2 Employee", ...]. Dedupe
+  // per-section rather than guessing at any one platform's exact markup.
+  for (const section of sections) {
+    section.content = [...new Set(section.content)];
+  }
+
   return sections;
 }
 
