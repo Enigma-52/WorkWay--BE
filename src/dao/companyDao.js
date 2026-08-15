@@ -39,6 +39,7 @@ export const companyQ = {
       COUNT(*)::int AS total_jobs,
       COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int AS recent_jobs
     FROM jobs
+    WHERE is_active = true
     GROUP BY company_id;
   `,
   ALL_COMPANY_COUNT: `
@@ -47,13 +48,13 @@ export const companyQ = {
     WHERE
       (COALESCE($1, '') = '' OR c.name ILIKE '%' || $1 || '%')
       AND (COALESCE($2, 'ALL') = 'ALL' OR c.name ILIKE $2 || '%')
-      AND ($3::boolean = false OR EXISTS(SELECT 1 FROM jobs j WHERE j.company_id = c.id))
+      AND ($3::boolean = false OR EXISTS(SELECT 1 FROM jobs j WHERE j.company_id = c.id AND j.is_active = true))
       AND (COALESCE($4, '') = '' OR c.platform = $4);
   `,
   OVERVIEW_STATS: `
     SELECT
       (SELECT COUNT(*)::int FROM companies) AS total_companies,
-      (SELECT COUNT(*)::int FROM jobs) AS total_jobs;
+      (SELECT COUNT(*)::int FROM jobs WHERE is_active = true) AS total_jobs;
   `,
   OVERVIEW_TRENDING: `
     SELECT
@@ -93,6 +94,7 @@ export const companyQ = {
   INNER JOIN (
     SELECT company_id, COUNT(*)::int AS job_count
     FROM jobs
+    WHERE is_active = true
     GROUP BY company_id
   ) jc ON jc.company_id = c.id
   ORDER BY jc.job_count DESC

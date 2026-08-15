@@ -1,6 +1,10 @@
 import PostgresDao from './dao.js';
 import { getCountryLocationPatterns } from '../utils/countryAliases.js';
 
+// Age-only proxy until real closure tracking exists — matches the
+// job/[jobSlug] middleware's own 410 threshold on the frontend.
+export const EXPIRE_OLD_JOBS_DAYS = 100;
+
 const JOB_FEED_COLS =
   'j.id,j.company_id,j.company,j.slug,j.platform,j.title,j.url,j.experience_level,j.employment_type,j.location,j.domain,j.skills,j.updated_at,j.metadata';
 const JOB_LIST_SELECT =
@@ -89,14 +93,15 @@ export const jobsQ = {
   HOME_FEED: `
     SELECT ${JOB_FEED_COLS}
     FROM jobs j
-    WHERE ($1::bigint IS NULL OR j.id < $1)
+    WHERE j.is_active = true
+      AND ($1::bigint IS NULL OR j.id < $1)
     ORDER BY j.id DESC
     LIMIT $2;
   `,
   COMPANY_FEED: `
     SELECT ${JOB_FEED_COLS}
     FROM jobs j
-    WHERE j.company_id = $1
+    WHERE j.company_id = $1 AND j.is_active = true
     ORDER BY j.created_at DESC
     LIMIT 200;
   `,
@@ -110,7 +115,7 @@ export const jobsQ = {
     SELECT ${JOB_FEED_COLS} , c.logo_url AS company_logo_url
     FROM jobs j
     JOIN companies c ON j.company_id = c.id
-    WHERE j.domain = $1 AND j.slug != $2
+    WHERE j.domain = $1 AND j.slug != $2 AND j.is_active = true
     ORDER BY j.created_at DESC
     LIMIT 3;
   `,
@@ -118,38 +123,39 @@ export const jobsQ = {
     SELECT ${JOB_FEED_COLS} , c.logo_url AS company_logo_url , c.slug AS company_slug
     FROM jobs j
     JOIN companies c ON j.company_id = c.id
-    WHERE j.company = $1 AND j.slug != $2
+    WHERE j.company = $1 AND j.slug != $2 AND j.is_active = true
     ORDER BY j.created_at DESC
     LIMIT 3;
   `,
   GET_JOBS_FOR_COMPANY_FROM_DB : `
-  SELECT job_id from jobs where company_id = $1 LIMIT 500;`,
+  SELECT job_id from jobs where company_id = $1 AND is_active = true LIMIT 500;`,
   GET_RECENT_JOBS_FOR_COMPANY_FROM_DB : `
     SELECT ${JOB_FEED_COLS}
     FROM jobs j
     WHERE j.company_id = $1
     AND created_at >= NOW() - INTERVAL '3 days'
+    AND j.is_active = true
     ORDER BY created_at DESC
     LIMIT 5;
   `,
   COMPANY_DOMAIN_STATS: `
     SELECT j.domain, COUNT(*)::int AS count
     FROM jobs j
-    WHERE j.company_id = $1
+    WHERE j.company_id = $1 AND j.is_active = true
     GROUP BY j.domain
     ORDER BY count DESC;
   `,
   COMPANY_JOBS_BY_DOMAIN: `
     SELECT ${JOB_FEED_COLS}
     FROM jobs j
-    WHERE j.company_id = $1 AND j.domain = $2
+    WHERE j.company_id = $1 AND j.domain = $2 AND j.is_active = true
     ORDER BY j.created_at DESC
     LIMIT $3 OFFSET $4;
   `,
   COMPANY_JOBS_COUNT_BY_DOMAIN: `
     SELECT COUNT(*)::int AS total
     FROM jobs j
-    WHERE j.company_id = $1 AND j.domain = $2;
+    WHERE j.company_id = $1 AND j.domain = $2 AND j.is_active = true;
   `,
   GET_SIMILAR_LOCATION_JOBS: `
     SELECT ${JOB_FEED_COLS}, c.logo_url AS company_logo_url, c.slug AS company_slug
@@ -157,6 +163,7 @@ export const jobsQ = {
     JOIN companies c ON j.company_id = c.id
     WHERE j.slug != $2
       AND j.location ILIKE '%' || $1 || '%'
+      AND j.is_active = true
     ORDER BY j.created_at DESC
     LIMIT 6;
   `,
@@ -168,6 +175,7 @@ export const jobsQ = {
     JOIN companies c ON j.company_id = c.id
     WHERE j.skills @> $1::jsonb
       AND j.slug != $2
+      AND j.is_active = true
     ORDER BY j.created_at DESC
     LIMIT 3;
   `
@@ -182,7 +190,8 @@ const SALARY_STATS_QUERY = `
   FROM jobs j
   WHERE j.platform = 'ashby'
     AND j.metadata->>'compensation' IS NOT NULL
-    AND j.metadata->>'compensation' != '';
+    AND j.metadata->>'compensation' != ''
+    AND j.is_active = true;
 `;
 
 const SALARY_STATS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -426,6 +435,7 @@ class JobsDao extends PostgresDao {
       `j.platform = 'ashby'`,
       `j.metadata->>'compensation' IS NOT NULL`,
       `j.metadata->>'compensation' != ''`,
+      `j.is_active = true`,
     ];
     const values = [];
     let paramIndex = 1;
@@ -527,6 +537,30 @@ class JobsDao extends PostgresDao {
     );
     return results.filter((g) => g.jobs.length > 0);
   }
+
+  // Age-only proxy until real closure tracking exists (see docs/FEATURES.md)
+  // — flips is_active off once a posting crosses EXPIRE_OLD_JOBS_DAYS, which
+  // every public-facing listing/count/search query now filters on, so an
+  // expired job stops appearing anywhere in the app the moment this runs.
+  // Matches the job/[jobSlug] middleware's own 410 threshold on the frontend.
+  async expireOldJobs() {
+    const rows = await this.getQ({
+      sql: `
+        UPDATE jobs
+        SET is_active = false
+        WHERE is_active = true
+          AND created_at < now() - interval '${EXPIRE_OLD_JOBS_DAYS} days'
+        RETURNING id
+      `,
+      values: [],
+    });
+    return rows.length;
+  }
+}
+
+export async function runExpireOldJobsCron() {
+  const expired = await jobsDao.expireOldJobs();
+  return { expired };
 }
 
 export const jobsDao = new JobsDao();

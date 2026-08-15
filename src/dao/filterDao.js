@@ -12,12 +12,14 @@ export const filterQ = {
       AND ($2 = 'all' OR j.employment_type = $2)
       AND ($3 = 'all' OR j.experience_level = $3)
       AND ($4 = 'all' OR j.location ILIKE '%' || $4 || '%')
+      AND j.is_active = true
     ORDER BY j.created_at DESC
     LIMIT $5 OFFSET $6;
   `,
   GET_JOBS_PER_DOMAIN: `
     SELECT domain, COUNT(*)::int AS job_count
     FROM jobs
+    WHERE is_active = true
     GROUP BY domain;
   `,
 };

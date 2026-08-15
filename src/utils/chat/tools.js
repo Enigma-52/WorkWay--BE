@@ -64,7 +64,7 @@ export async function filterJobsStructured(filters) {
           location,
           1 - (embedding <=> $1::vector) AS similarity
         FROM jobs
-        WHERE id = ANY($2::int[]) AND embedding IS NOT NULL
+        WHERE id = ANY($2::int[]) AND embedding IS NOT NULL AND is_active = true
         ORDER BY embedding <=> $1::vector
         LIMIT 5
       `,

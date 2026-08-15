@@ -196,7 +196,7 @@ export async function searchJobsByQuery(queryText) {
                 company,
                 1 - (embedding <=> $1::vector) AS similarity
             FROM jobs
-            WHERE embedding IS NOT NULL
+            WHERE embedding IS NOT NULL AND is_active = true
             ORDER BY embedding <=> $1::vector
             LIMIT 5
         `,

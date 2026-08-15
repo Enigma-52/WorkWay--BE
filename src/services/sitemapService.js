@@ -201,6 +201,7 @@ export async function getValidLocationCombos() {
       JOIN jobs j
         ON LOWER(j.title)    LIKE '%' || REPLACE(r.role_slug,    '-', ' ') || '%'
        AND LOWER(j.location) LIKE '%' || REPLACE(l.location_slug, '-', ' ') || '%'
+       AND j.is_active = true
       GROUP BY r.role_slug, l.location_slug
       HAVING COUNT(j.id) > 5
     `,
@@ -241,6 +242,7 @@ export async function getValidLocations() {
       FROM unnest($1::text[]) AS l(location_slug)
       JOIN jobs j
         ON LOWER(j.location) LIKE '%' || REPLACE(l.location_slug, '-', ' ') || '%'
+       AND j.is_active = true
       GROUP BY l.location_slug
       HAVING COUNT(j.id) > 5
     `,
@@ -278,7 +280,7 @@ export async function generateJobsSitemap() {
     query: `
       SELECT slug, updated_at, created_at
       FROM jobs
-      WHERE slug IS NOT NULL
+      WHERE slug IS NOT NULL AND is_active = true
       ORDER BY created_at DESC NULLS LAST, id DESC
       LIMIT $1
     `,

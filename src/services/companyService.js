@@ -14,7 +14,7 @@ export async function getCompanyDetails(slug) {
     const companyId = companyDetails.id;
     const [recentlyPostedJobs, countResult, domainStats] = await Promise.all([
       jobsDao.getCompanyRecentlyPostedJobs({ companyId }),
-      jobsDao.getQ({ sql: 'SELECT COUNT(*)::int AS total FROM jobs WHERE company_id = $1', values: [companyId] }),
+      jobsDao.getQ({ sql: 'SELECT COUNT(*)::int AS total FROM jobs WHERE company_id = $1 AND is_active = true', values: [companyId] }),
       jobsDao.getCompanyDomainStats({ companyId }),
     ]);
     const enrichedCompanyDetails = {

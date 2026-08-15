@@ -5,6 +5,7 @@ export const skillsQ = {
     WITH job_skills AS (
       SELECT (sk->>'name') AS skill_name
       FROM jobs j, jsonb_array_elements(j.skills) AS sk
+      WHERE j.is_active = true
     ),
 
     skill_counts AS (
@@ -34,7 +35,7 @@ export const skillsQ = {
     stats AS (
       SELECT
         (SELECT COUNT(*) FROM skills) AS total_skills,
-        (SELECT COUNT(*) FROM jobs) AS total_jobs,
+        (SELECT COUNT(*) FROM jobs WHERE is_active = true) AS total_jobs,
         (SELECT COUNT(DISTINCT skill_group_name) FROM skills) AS total_categories
     )
 
@@ -64,6 +65,7 @@ export const skillsQ = {
     AND ($2::text IS NULL OR j.employment_type = $2)
     AND ($3::text IS NULL OR j.experience_level = $3)
     AND ($4::text IS NULL OR j.location ILIKE '%' || $4 || '%')
+    AND j.is_active = true
     ORDER BY j.created_at DESC
     LIMIT $5 OFFSET $6;
     `,

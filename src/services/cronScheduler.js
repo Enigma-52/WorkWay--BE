@@ -8,6 +8,7 @@ import {
 import { fetchAshbyJobs } from './cronService.js';
 import { runFeedbackRequestCron, runWeeklySummaryCron } from './lifecycleEmailService.js';
 import { runCompanyAlertCheckCron } from './companyAlertService.js';
+import { runExpireOldJobsCron } from '../dao/jobsDao.js';
 
 export const JOBS = [
   // Greenhouse: every 4hrs → 0, 4, 8, 12, 16, 20
@@ -24,6 +25,11 @@ export const JOBS = [
   // jobs newer than its own watermark every 10 minutes. Gated internally
   // behind company_alert_emails_enabled, so safe to run before that's on.
   { tag: 'company_alert_check', fn: runCompanyAlertCheckCron, schedule: '*/10 * * * *' },
+  // Flips is_active off for postings older than EXPIRE_OLD_JOBS_DAYS
+  // (jobsDao.js) — age-only proxy until real closure tracking exists, but
+  // every public listing/count/search query now filters on is_active, so
+  // this is what actually removes an old job from the app once it runs.
+  { tag: 'expire_old_jobs', fn: runExpireOldJobsCron, schedule: '0 3 * * *' },
 ];
 
 // Every job in JOBS gets an explicit cron_config row the moment it's

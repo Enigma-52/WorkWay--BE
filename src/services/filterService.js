@@ -22,6 +22,7 @@ export async function getDomainJobDetails(slug, page, employment_type, employmen
           AND ($2 = 'all' OR employment_type = $2)
           AND ($3 = 'all' OR experience_level = $3)
           AND ($4 = 'all' OR location ILIKE '%' || $4 || '%')
+          AND is_active = true
       `,
       values: [domain.name, employment_type, employment_level, location],
     }),
@@ -119,6 +120,7 @@ export async function getSkillJobDetails(slug,
             AND ($2::text IS NULL OR employment_type = $2)
             AND ($3::text IS NULL OR experience_level = $3)
             AND ($4::text IS NULL OR location ILIKE '%' || $4 || '%')
+            AND is_active = true
         `,
         values: [
           skillJsonb,
