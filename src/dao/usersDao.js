@@ -7,15 +7,17 @@ const UPSERT_USER_SQL = `
     display_name,
     first_name,
     last_name,
-    avatar_url
+    avatar_url,
+    last_login_at
   )
-  VALUES ($1, $2, $3, $4, $5, $6)
+  VALUES ($1, $2, $3, $4, $5, $6, now())
   ON CONFLICT (email) DO UPDATE SET
     email_verified = EXCLUDED.email_verified,
     display_name   = EXCLUDED.display_name,
     first_name     = EXCLUDED.first_name,
     last_name      = EXCLUDED.last_name,
     avatar_url     = EXCLUDED.avatar_url,
+    last_login_at  = now(),
     updated_at     = now()
   RETURNING
     id,
