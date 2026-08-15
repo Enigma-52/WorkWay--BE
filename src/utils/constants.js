@@ -16,10 +16,15 @@ export const JOB_DOMAINS = [
   { name: 'Design / Creative', slug: 'design-creative' },
   { name: 'QA / Testing', slug: 'qa-testing' },
   { name: 'Admin / Office', slug: 'admin-office' },
-  { name: 'AI', slug: 'ai' },
   { name: 'Software Engineering', slug: 'software-engineering' },
   { name: 'Analyst', slug: 'analyst' },
   { name: 'Research', slug: 'research' },
+  { name: 'Healthcare', slug: 'healthcare' },
+  { name: 'Skilled Trades', slug: 'skilled-trades' },
+  { name: 'Education', slug: 'education' },
+  { name: 'Real Estate', slug: 'real-estate' },
+  { name: 'Retail / Hospitality', slug: 'retail-hospitality' },
+  { name: 'Management', slug: 'management' },
   { name: 'Other', slug: 'other' },
 ];
 
