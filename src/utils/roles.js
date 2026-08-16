@@ -1,13 +1,10 @@
 import { usersDao } from '../dao/usersDao.js';
 import { logger } from './logger.js';
 
-// `roles` has historically been stored both as a jsonb array (["seeker", "admin"])
-// via the onboarding flow and as a jsonb object ({"job_seeker": true}) as the
-// column default for never-onboarded rows. Handle both shapes.
+// `roles` is a jsonb array, e.g. ["seeker"] or ["seeker", "admin"]. The
+// column default is ["seeker"] for every new row.
 export function hasAdminRole(roles) {
-  if (Array.isArray(roles)) return roles.includes('admin');
-  if (roles && typeof roles === 'object') return roles.admin === true;
-  return false;
+  return Array.isArray(roles) && roles.includes('admin');
 }
 
 // Second, independent check on top of `requireInternalSecret`: that header

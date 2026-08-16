@@ -14,16 +14,11 @@ describe('hasAdminRole', () => {
     expect(hasAdminRole([])).toBe(false);
   });
 
-  it('recognizes the legacy object shape', () => {
-    expect(hasAdminRole({ admin: true })).toBe(true);
-    expect(hasAdminRole({ admin: false })).toBe(false);
-    expect(hasAdminRole({ job_seeker: true })).toBe(false);
-  });
-
   it('is false for null/undefined/garbage', () => {
     expect(hasAdminRole(null)).toBe(false);
     expect(hasAdminRole(undefined)).toBe(false);
     expect(hasAdminRole('admin')).toBe(false);
+    expect(hasAdminRole({ admin: true })).toBe(false);
   });
 });
 
