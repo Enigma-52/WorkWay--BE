@@ -149,19 +149,24 @@ export function generateStaticSitemap() {
 ========================= */
 
 export async function generateCompaniesSitemap() {
-  const d = today();
+  // A company page's content is really "its current list of open roles," so
+  // the most recent job posting is a truer freshness signal than the
+  // companies row's own created_at (set once, at first ingestion, and never
+  // touched again regardless of how much the job list churns).
   const rows = await runPgStatement({
     query: `
-      SELECT slug
-      FROM companies
-      WHERE slug IS NOT NULL
+      SELECT c.slug, COALESCE(MAX(j.created_at), c.created_at) AS lastmod
+      FROM companies c
+      LEFT JOIN jobs j ON j.company_id = c.id AND j.is_active = true
+      WHERE c.slug IS NOT NULL
+      GROUP BY c.slug, c.created_at
     `,
   });
 
   const items = rows.map((r) =>
     urlTag({
       loc: `/company/${r.slug}`,
-      lastmod: d,
+      lastmod: r.lastmod ? r.lastmod.toISOString().split('T')[0] : today(),
       changefreq: 'daily',
       priority: 0.9,
     })
