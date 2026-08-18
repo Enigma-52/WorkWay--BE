@@ -111,6 +111,11 @@ export function generateStaticSitemap() {
     { loc: '/jobs-by-location', changefreq: 'daily', priority: 0.9 },
     { loc: '/guides', changefreq: 'daily', priority: 0.9 },
     { loc: '/salary-insights', changefreq: 'daily', priority: 0.9 },
+    { loc: '/internships', changefreq: 'daily', priority: 0.9 },
+    { loc: '/senior-jobs', changefreq: 'daily', priority: 0.9 },
+    { loc: '/contract-jobs', changefreq: 'daily', priority: 0.9 },
+    { loc: '/tools/ats-finder', changefreq: 'weekly', priority: 0.8 },
+    { loc: '/blog', changefreq: 'weekly', priority: 0.9 },
 
 
     // Guides
@@ -131,6 +136,13 @@ export function generateStaticSitemap() {
     { loc: '/guides/workway-vs-linkedin-jobs', changefreq: 'weekly', priority: 0.9 },
     { loc: '/guides/workway-vs-wellfound-startup-jobs', changefreq: 'weekly', priority: 0.9 },
     { loc: '/guides/workway-vs-hacker-news-hiring-threads', changefreq: 'weekly', priority: 0.9 },
+
+    // Blog
+    { loc: '/blog/how-ats-systems-actually-work', changefreq: 'monthly', priority: 0.8 },
+    { loc: '/blog/complete-guide-backend-engineering-jobs', changefreq: 'monthly', priority: 0.8 },
+    { loc: '/blog/what-are-ghost-jobs', changefreq: 'monthly', priority: 0.8 },
+    { loc: '/blog/finding-remote-software-engineering-jobs', changefreq: 'monthly', priority: 0.8 },
+    { loc: '/blog/contract-vs-full-time-tech-roles', changefreq: 'monthly', priority: 0.8 },
 
   ];
 
