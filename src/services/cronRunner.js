@@ -18,7 +18,7 @@ function clearIngestionCaches() {
 
 // Longest observed real run (daily_ashby) is ~55min; give a wide margin
 // above that before treating a 'started' row as abandoned rather than
-// genuinely in-progress.
+// genuinely in-progress. Applies to every job tag.
 const STALE_RUN_MS = 3 * 60 * 60 * 1000; // 3 hours
 
 /**
