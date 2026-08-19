@@ -16,6 +16,11 @@ function clearIngestionCaches() {
   jobsDao.clearCache();
 }
 
+// Longest observed real run (daily_ashby) is ~55min; give a wide margin
+// above that before treating a 'started' row as abandoned rather than
+// genuinely in-progress.
+const STALE_RUN_MS = 3 * 60 * 60 * 1000; // 3 hours
+
 /**
  * Generic cron job runner with DB tracking and dry run support.
  *
@@ -45,14 +50,34 @@ export async function runCronJob({ tag, fn, dryRun = false, force = false }) {
   // "Run now" button makes rapid double-triggering (a double click, a stuck
   // network retry) practically likely enough to guard against explicitly,
   // not just theoretically possible.
+  //
+  // A row can also get stuck in 'started' forever if the process dies
+  // mid-run (deploy, OOM, crash) before the try/catch below writes a final
+  // status — happened to daily_greenhouse and daily_ashby in prod, silently
+  // blocking every scheduled trigger for that tag with no new row ever
+  // logged. So a 'started' row only counts as "already running" if it's
+  // younger than STALE_RUN_MS; older than that, it's abandoned and gets
+  // marked failed instead of blocking forever.
   if (!dryRun) {
     const alreadyRunning = await defaultPgDao.getQ({
-      sql: `SELECT id FROM cron_runs WHERE tag = $1 AND status = 'started' AND finished_at IS NULL LIMIT 1`,
+      sql: `SELECT id, started_at FROM cron_runs WHERE tag = $1 AND status = 'started' AND finished_at IS NULL LIMIT 1`,
       values: [tag],
     });
     if (alreadyRunning.length > 0) {
-      console.log(`[CRON] ${tag} is already running (run #${alreadyRunning[0].id}), skipping`);
-      return { tag, status: 'already_running', runId: alreadyRunning[0].id };
+      const runningAgeMs = Date.now() - new Date(alreadyRunning[0].started_at).getTime();
+      if (runningAgeMs < STALE_RUN_MS) {
+        console.log(`[CRON] ${tag} is already running (run #${alreadyRunning[0].id}), skipping`);
+        return { tag, status: 'already_running', runId: alreadyRunning[0].id };
+      }
+
+      console.warn(
+        `[CRON] ${tag} run #${alreadyRunning[0].id} has been 'started' for ${Math.round(runningAgeMs / 60000)}min, ` +
+        `exceeding the ${Math.round(STALE_RUN_MS / 60000)}min staleness threshold — treating as orphaned and marking it failed`
+      );
+      await defaultPgDao.getQ({
+        sql: `UPDATE cron_runs SET status = 'failed', finished_at = NOW(), duration_ms = $1, error = $2 WHERE id = $3`,
+        values: [runningAgeMs, 'orphaned: exceeded staleness threshold, likely process restart mid-run', alreadyRunning[0].id],
+      });
     }
   }
 
