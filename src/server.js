@@ -15,6 +15,7 @@ import { initPassportSession } from './services/authService.js';
 import { startCronScheduler } from './services/cronScheduler.js';
 import dodoWebhookRoutes from './routes/dodoWebhook.js';
 import resendWebhookRoutes from './routes/resendWebhook.js';
+import mcpRouter from '../mcp/server.js';
 
 
 const app = express();
@@ -38,6 +39,10 @@ app.use('/api/email/webhook', express.raw({ type: 'application/json' }), resendW
 
 // Middleware
 app.use(express.json());
+
+// MCP server (see mcp/ at the repo root) — authenticates with its own API-key
+// bearer scheme, separate from the session auth the REST API below uses.
+app.use('/mcp', mcpRouter);
 // A hardcoded fallback here would let anyone forge a valid session cookie.
 // A random per-boot secret is a safe failure mode if the env var is missing:
 // existing sessions get invalidated on restart instead of being forgeable.
