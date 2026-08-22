@@ -12,6 +12,7 @@ import syncRoutes from './sync.js'
 import feedbackRoutes from './feedback.js';
 import authRoutes from './auth.js';
 import userRoutes from './user.js';
+import apiKeysRoutes from './apiKeys.js';
 import applicationsRoutes from './applications.js';
 import savedJobsRoutes from './savedJobs.js';
 import alertsRoutes from './alerts.js';
@@ -44,6 +45,7 @@ router.use('/chat', chatRoutes);
 router.use('/feedback', feedbackRoutes);
 router.use('/auth', authRoutes);
 router.use('/user', userRoutes);
+router.use('/api-keys', apiKeysRoutes);
 router.use('/applications', applicationsRoutes);
 router.use('/saved-jobs', savedJobsRoutes);
 router.use('/alerts', alertsRoutes);
