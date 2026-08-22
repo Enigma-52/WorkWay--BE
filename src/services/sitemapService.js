@@ -117,6 +117,18 @@ export function generateStaticSitemap() {
     { loc: '/tools/ats-finder', changefreq: 'weekly', priority: 0.8 },
     { loc: '/blog', changefreq: 'weekly', priority: 0.9 },
 
+    // MCP server
+
+    { loc: '/mcp', changefreq: 'weekly', priority: 0.9 },
+    { loc: '/mcp/tools', changefreq: 'weekly', priority: 0.8 },
+    { loc: '/mcp/api-keys', changefreq: 'monthly', priority: 0.7 },
+
+    // Feature pages
+
+    { loc: '/features/job-alerts', changefreq: 'weekly', priority: 0.8 },
+    { loc: '/features/saved-jobs', changefreq: 'weekly', priority: 0.8 },
+    { loc: '/features/talent-profile', changefreq: 'weekly', priority: 0.8 },
+
 
     // Guides
 
