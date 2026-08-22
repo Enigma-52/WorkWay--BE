@@ -43,6 +43,9 @@ export const EXPERIENCE_LEVELS = [
   'Intern',
 ];
 
+/** j.platform values set by the ingestion crons (cronService.js/dailyService.js). Used for filter validation. */
+export const JOB_PLATFORMS = ['greenhouse', 'ashby', 'ycombinator'];
+
 // ASHBY COMPANIES - API Configs
 
 export const ASHBY_ALL_COMPANY_JOBS_API_URL =
