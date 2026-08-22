@@ -80,6 +80,12 @@ function buildListWhere(filters, opts = {}) {
     paramIndex += 1;
   }
 
+  if (opts.excludeFacet !== 'platform' && filters.platform != null && filters.platform !== '') {
+    whereClauses.push(`j.platform = $${paramIndex}`);
+    values.push(filters.platform);
+    paramIndex += 1;
+  }
+
   if (filters.posted_since != null) {
     whereClauses.push(`j.created_at >= $${paramIndex}`);
     values.push(filters.posted_since);
