@@ -8,6 +8,8 @@ import { registerCompanyTools } from './tools/companies.js';
 import { registerSavedJobTools } from './tools/savedJobs.js';
 import { registerAlertTools } from './tools/alerts.js';
 import { registerTalentProfileTools } from './tools/talentProfile.js';
+import { registerInfoTools } from './tools/info.js';
+import { registerResources } from './resources.js';
 
 const router = express.Router();
 
@@ -23,6 +25,11 @@ function buildServer(user) {
   registerSavedJobTools(server, ctx);
   registerAlertTools(server, ctx);
   registerTalentProfileTools(server, ctx);
+  registerInfoTools(server, ctx);
+
+  // Same reference material as the tools above, exposed as resources for
+  // clients that browse them; get_workway_info covers clients that don't.
+  registerResources(server);
 
   return server;
 }
