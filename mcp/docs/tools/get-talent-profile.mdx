@@ -1,0 +1,43 @@
+---
+title: "get_talent_profile"
+sidebarTitle: "get_talent_profile"
+description: "Read your public talent profile."
+icon: "id-card"
+---
+
+<Note>
+  **Read tool** — answers questions; nothing is modified. Requires a WorkWay API key.
+</Note>
+
+Returns the talent profile attached to the account, including experience, education and certifications. If no profile exists yet, the response explains how to create one.
+
+
+## Parameters
+
+<Info>This tool takes no arguments.</Info>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "Show me my WorkWay talent profile."
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "What skills are listed on my profile?"
+  </Card>
+</CardGroup>
+
+## Response
+
+```json
+{
+  "profile": {
+    "username": "rohit",
+    "professional_title": "Staff Backend Engineer",
+    "category": "Engineering",
+    "skills": ["Node.js", "Postgres"],
+    "experiences": []
+  },
+  "profile_url": "https://workway.dev/p/rohit"
+}
+```

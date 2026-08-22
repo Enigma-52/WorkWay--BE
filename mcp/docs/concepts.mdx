@@ -1,0 +1,86 @@
+---
+title: "Core concepts"
+sidebarTitle: "Concepts"
+description: "Slugs, the two links on every job, resources, and how plans affect tools."
+icon: "book"
+---
+
+## Slugs, not ids
+
+Jobs and companies are addressed by **slug** — a lowercase, hyphenated string —
+never a numeric id.
+
+```text
+Job:     ping-identity-staff-software-engineer-8676157002
+Company: y-combinator
+```
+
+Get a job slug from `search_jobs`. Get a company slug from search results, or
+from [the company directory](https://workway.dev/companies). Passing an unknown
+slug returns an error that names the problem and points at where to find valid
+values, rather than an empty result you might mistake for "nothing is open".
+
+## Two links on every job
+
+Every job a tool returns carries two URLs, deliberately:
+
+<CardGroup cols={2}>
+  <Card title="apply_url" icon="arrow-up-right-from-square">
+    The untouched posting on the company's own ATS. **This is where people
+    apply.** WorkWay never sits between the applicant and the employer.
+  </Card>
+  <Card title="workway_url" icon="link">
+    The role's page on workway.dev — useful for company context, related roles
+    and salary data.
+  </Card>
+</CardGroup>
+
+## Resources
+
+Alongside tools, the server exposes three MCP **resources** carrying reference
+material an assistant can read directly:
+
+| URI | Contents |
+|---|---|
+| `workway://about` | What WorkWay is, how data is sourced, live coverage numbers, plan differences. |
+| `workway://tools` | Tool catalog, filter vocabularies, slug conventions. |
+| `workway://api` | The underlying REST API, the MCP endpoint, sitemaps, auth model. |
+
+<Tip>
+  Not every MCP client surfaces resources. The `get_workway_info` tool returns
+  the same material, so an assistant always has a way to reach it.
+</Tip>
+
+## Free and Pro
+
+A free account can use **every tool**: searching, saving jobs, following
+companies and editing a talent profile all work with no paid plan.
+
+Pro adds one thing — **instant email alerts**. When a company you follow posts a
+new role, Pro accounts get an email straight away rather than finding out later.
+
+<Warning>
+  `follow_company` is **never plan-gated**. The follow itself always succeeds on
+  every plan; only the email delivery requires Pro. The tool's response says so
+  explicitly on the free plan, so nobody is left assuming alerts are switched on
+  when they are not.
+</Warning>
+
+`list_alerts` reports `email_alerts_active` for the same reason — it is always
+unambiguous whether emails will actually arrive.
+
+## Errors
+
+Tool errors are written to be actionable rather than terse:
+
+```text
+No job found with slug "nope-not-real". Use search_jobs to find the correct slug.
+```
+
+```text
+Invalid platform: monster. Allowed: greenhouse, ashby, ycombinator, or 'all'.
+```
+
+Filter validation is delegated to the same service that powers
+`GET /api/job/list`, so the MCP surface and the website can never disagree about
+what a valid domain, level or source is.

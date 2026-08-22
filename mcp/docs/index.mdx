@@ -1,0 +1,81 @@
+---
+title: "WorkWay MCP Server"
+sidebarTitle: "Introduction"
+description: "Search 490,000+ live job openings from inside Claude and any MCP client."
+icon: "plug"
+---
+
+WorkWay indexes job openings **directly from the applicant tracking systems
+companies hire through** — Greenhouse, Ashby and Y Combinator's job board —
+rather than re-hosting listings from other job boards. The MCP server puts that
+index inside your AI assistant.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Connect the server to Claude in about two minutes.
+  </Card>
+  <Card title="Tool reference" icon="wrench" href="/tools/search-jobs">
+    All ten tools, with parameters and sample responses.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    How API keys are issued, scoped and revoked.
+  </Card>
+  <Card title="Filters" icon="filter" href="/filters">
+    Every accepted filter value, in one place.
+  </Card>
+</CardGroup>
+
+## Why it exists
+
+Most openings never reach the big aggregators. They live on a company's own
+careers page, posted through its ATS, and stay there until someone happens to
+look. WorkWay reads those boards continuously so the listings surface in one
+searchable feed — with the original apply link intact.
+
+<Note>
+  **Direct apply, always.** Every result links to the company's real posting.
+  WorkWay never proxies an application or inserts its own form between you and
+  the employer.
+</Note>
+
+## What you can do
+
+Once connected, you can ask your assistant to:
+
+- **Search** live openings by role, domain, seniority, location, country, ATS
+  source or how recently they were posted
+- **Look up a company** — what it does, how many roles are open, and the
+  breakdown by domain
+- **Save roles** to your WorkWay dashboard as you go
+- **Follow companies** so new postings reach you first
+- **Build and edit your talent profile** so companies browsing the directory can
+  find you
+
+## Coverage
+
+| | |
+|---|---|
+| Active listings | ~490,000 |
+| Companies | 5,000+ |
+| Domains | 27 |
+| ATS sources | Greenhouse, Ashby, Y Combinator |
+| Refresh cadence | Daily |
+
+<Tip>
+  Coverage numbers are read live from the database by the `get_workway_info`
+  tool, so an assistant can always quote a current figure rather than the
+  approximation above.
+</Tip>
+
+## Endpoint
+
+```
+https://api.workway.dev/mcp
+```
+
+Streamable HTTP transport, stateless. Every request needs an
+`Authorization: Bearer <workway-api-key>` header — there is no anonymous access.
+
+<Card title="Get your API key" icon="key" href="https://workway.dev/dashboard/seeker/api-keys">
+  Free WorkWay accounts can generate a key and use every tool.
+</Card>

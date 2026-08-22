@@ -1,0 +1,40 @@
+---
+title: "list_domains"
+sidebarTitle: "list_domains"
+description: "Every job domain with its live open-role count."
+icon: "layer-group"
+---
+
+<Note>
+  **Read tool** — answers questions; nothing is modified. Requires a WorkWay API key.
+</Note>
+
+Returns the full domain taxonomy with current counts. Call this to discover valid domain slugs before filtering `search_jobs`, or to answer questions about which fields have the most openings.
+
+
+## Parameters
+
+<Info>This tool takes no arguments.</Info>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "Which fields have the most open roles on WorkWay?"
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "What domains can I filter jobs by?"
+  </Card>
+</CardGroup>
+
+## Response
+
+```json
+{
+  "domains": [
+    { "name": "Software Engineering", "slug": "software-engineering", "job_count": 104540 },
+    { "name": "AI / Data Science", "slug": "ai-data-science", "job_count": 21877 }
+  ],
+  "cta": "Browse by domain at https://workway.dev/domains"
+}
+```

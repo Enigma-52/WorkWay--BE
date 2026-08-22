@@ -1,0 +1,96 @@
+---
+title: "Quickstart"
+description: "Connect WorkWay to your MCP client in about two minutes."
+icon: "rocket"
+---
+
+<Steps>
+  <Step title="Create a WorkWay account">
+    Sign in at [workway.dev](https://workway.dev) with Google or a magic link.
+    A free account is enough — every MCP tool works on the free plan.
+  </Step>
+
+  <Step title="Generate an API key">
+    Open [API Keys](https://workway.dev/dashboard/seeker/api-keys) in your
+    dashboard, give the key a name (for example `Claude Desktop`), optionally
+    pick an expiry, and create it.
+
+    <Warning>
+      The key is shown **once**. Only a SHA-256 hash is stored, so it cannot be
+      retrieved later — copy it before closing the panel.
+    </Warning>
+  </Step>
+
+  <Step title="Add the server to your client">
+    WorkWay is a remote MCP server, so there is nothing to install — you point
+    your client at the endpoint and supply your key.
+
+    <CodeGroup>
+    ```json Claude Desktop
+    {
+      "mcpServers": {
+        "workway": {
+          "url": "https://api.workway.dev/mcp",
+          "headers": {
+            "Authorization": "Bearer wk_live_your_key_here"
+          }
+        }
+      }
+    }
+    ```
+
+    ```bash Claude Code
+    claude mcp add --transport http workway https://api.workway.dev/mcp \
+      --header "Authorization: Bearer wk_live_your_key_here"
+    ```
+    </CodeGroup>
+
+    Restart your client after editing its config file.
+  </Step>
+
+  <Step title="Ask for something">
+    Try one of these:
+
+    <CardGroup cols={2}>
+      <Card title="Search" icon="magnifying-glass">
+        "Find remote senior backend roles posted this week."
+      </Card>
+      <Card title="Research" icon="building">
+        "What is Stripe hiring for right now?"
+      </Card>
+      <Card title="Save" icon="bookmark">
+        "Save the second and third of those for me."
+      </Card>
+      <Card title="Track" icon="bell">
+        "Follow Figma so I hear about new roles."
+      </Card>
+    </CardGroup>
+  </Step>
+</Steps>
+
+## Verifying it works
+
+If tools do not appear, check the key directly:
+
+```bash
+curl -X POST https://api.workway.dev/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Authorization: Bearer wk_live_your_key_here" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+A working key returns the list of ten tools. Anything else returns `401` with a
+message naming the cause:
+
+| Message | Meaning |
+|---|---|
+| `A WorkWay API key is required.` | No `Authorization` header, or the scheme was not `Bearer`. |
+| `That WorkWay API key is not valid.` | The key does not match any issued key. |
+| `That WorkWay API key has expired.` | The key had an expiry and it has passed. |
+| `That WorkWay API key has been revoked.` | The key was revoked from the dashboard. |
+
+<Tip>
+  Use a separate key per client. Revoking the one on a machine you no longer use
+  then leaves your other clients working.
+</Tip>

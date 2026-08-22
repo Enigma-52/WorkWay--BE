@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.Enigma-52/workway",
+  "description": "Search 490,000+ live job openings pulled straight from company ATS boards (Greenhouse, Ashby, Y Combinator), save roles, follow companies for new-posting alerts, and manage your WorkWay talent profile.",
+  "version": "1.0.0",
+  "websiteUrl": "https://workway.dev/mcp",
+  "repository": {
+    "url": "https://github.com/Enigma-52/WorkWay--BE",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.workway.dev/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer <workway-api-key>. Generate a key at https://workway.dev/dashboard/seeker/api-keys",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

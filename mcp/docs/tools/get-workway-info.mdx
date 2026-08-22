@@ -1,0 +1,49 @@
+---
+title: "get_workway_info"
+sidebarTitle: "get_workway_info"
+description: "Background on WorkWay, live coverage, and valid filter values."
+icon: "circle-info"
+---
+
+<Note>
+  **Read tool** — answers questions; nothing is modified. Requires a WorkWay API key.
+</Note>
+
+Reference tool for the assistant itself. Explains what WorkWay is and how its data is sourced, reports live job/company/domain counts, lists every accepted filter value, documents the underlying REST API, and describes how the free and Pro plans differ.
+
+
+## Parameters
+
+<ParamField body="topic" type="enum">
+  Which section to return: `overview` (default), `coverage`, `filters`, `api` or `plans`.
+</ParamField>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "What filter values does WorkWay accept?"
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "How many jobs does WorkWay currently index?"
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "What's the difference between WorkWay free and Pro?"
+  </Card>
+</CardGroup>
+
+## Response
+
+```json
+{
+  "platform": ["greenhouse", "ashby", "ycombinator"],
+  "employment_type": ["Full-Time", "Part-Time", "Contract"],
+  "experience_level": ["Director", "Lead", "Manager", "Staff", "Senior", "Mid-level", "Junior", "Intern"],
+  "posted": ["today", "3d", "7d", "30d"],
+  "country": "ISO alpha-3 code, e.g. USA, IND, DEU"
+}
+```
+
+<Tip>
+  Coverage numbers are read live from the database, not hardcoded, so they are safe to quote.
+</Tip>

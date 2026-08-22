@@ -1,0 +1,52 @@
+---
+title: "get_company_overview"
+sidebarTitle: "get_company_overview"
+description: "Everything WorkWay knows about one company."
+icon: "building"
+---
+
+<Note>
+  **Read tool** — answers questions; nothing is modified. Requires a WorkWay API key.
+</Note>
+
+Looks up a single company by slug and returns what it does, how many roles are currently open, the breakdown of those roles by domain, and its most recently posted jobs. Useful before following a company, or when someone asks what a specific employer is hiring for.
+
+
+## Parameters
+
+<ParamField body="company" type="string" required>
+  Company slug, lowercase and hyphenated, e.g. `stripe` or `y-combinator`.
+</ParamField>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "What is Stripe hiring for right now?"
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "How many engineering roles does Figma have open?"
+  </Card>
+</CardGroup>
+
+## Response
+
+```json
+{
+  "name": "Stripe",
+  "slug": "stripe",
+  "description": "Stripe is a technology company that builds an infrastructure for online payments.",
+  "website": "https://stripe.com",
+  "total_open_roles": 1626,
+  "roles_by_domain": [
+    { "domain": "Software Engineering", "count": 239 },
+    { "domain": "Accounts / Finance", "count": 253 }
+  ],
+  "recent_jobs": [],
+  "workway_url": "https://workway.dev/company/stripe"
+}
+```
+
+<Tip>
+  Slugs are lowercase and hyphenated. An unknown slug returns an error pointing at the company directory rather than an empty result.
+</Tip>

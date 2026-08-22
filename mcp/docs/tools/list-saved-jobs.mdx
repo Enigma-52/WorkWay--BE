@@ -1,0 +1,46 @@
+---
+title: "list_saved_jobs"
+sidebarTitle: "list_saved_jobs"
+description: "Everything you've saved, with apply links intact."
+icon: "list-check"
+---
+
+<Note>
+  **Read tool** — answers questions; nothing is modified. Requires a WorkWay API key.
+</Note>
+
+Lists every job saved to the account that owns the API key, newest first, each with its original apply link and WorkWay page.
+
+
+## Parameters
+
+<Info>This tool takes no arguments.</Info>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "What jobs have I saved so far?"
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "Which saved roles are still remote?"
+  </Card>
+</CardGroup>
+
+## Response
+
+```json
+{
+  "count": 7,
+  "saved_jobs": [
+    {
+      "title": "Staff Software Engineer",
+      "company": "Ping Identity",
+      "saved_at": "2026-08-22T18:07:01.892Z",
+      "apply_url": "https://job-boards.greenhouse.io/pingidentity/jobs/8676157002",
+      "workway_url": "https://workway.dev/job/ping-identity-staff-software-engineer-8676157002"
+    }
+  ],
+  "dashboard_url": "https://workway.dev/dashboard/seeker/saved-jobs"
+}
+```

@@ -1,0 +1,39 @@
+---
+title: "follow_company"
+sidebarTitle: "follow_company"
+description: "Track a company so new roles reach you first."
+icon: "bell"
+---
+
+<Note>
+  **Write tool** — changes something on the account that owns the API key. Requires a WorkWay API key.
+</Note>
+
+Follows a company on the account that owns the API key. Following works on every plan — free accounts can follow as many companies as they like. On Pro, following also turns on instant email alerts: an email the moment that company posts a new role, rather than a daily digest.
+
+<Warning>
+  This tool is never plan-gated. The follow itself always succeeds on every plan — only the instant email delivery requires Pro. The response wording differs by plan so a free user is never left assuming emails are switched on.
+</Warning>
+
+## Parameters
+
+<ParamField body="company" type="string" required>
+  Company slug, e.g. `stripe`.
+</ParamField>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "Follow Figma so I hear about new roles there."
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "Follow every company you just showed me."
+  </Card>
+</CardGroup>
+
+## Response
+
+```text
+Now following Figma — it's saved to your follows at https://workway.dev/dashboard/seeker/alerts. Instant email alerts the moment they post a new role are a Pro feature; on the free plan you'll need to check back yourself. See https://workway.dev/pricing.
+```

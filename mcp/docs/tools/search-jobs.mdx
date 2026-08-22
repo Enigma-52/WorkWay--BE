@@ -1,0 +1,107 @@
+---
+title: "search_jobs"
+sidebarTitle: "search_jobs"
+description: "Search live openings across every indexed company."
+icon: "magnifying-glass"
+---
+
+<Note>
+  **Read tool** — answers questions; nothing is modified. Requires a WorkWay API key.
+</Note>
+
+The core tool. Searches active job listings pulled straight from company ATS boards, with filters for text, domain, location, country, company, employment type, experience level, ATS source and recency. Results are paginated, and every job carries both its original apply link and its WorkWay page.
+
+
+## Parameters
+
+<ParamField body="query" type="string">
+  Free text matched against job title and company name.
+</ParamField>
+
+<ParamField body="domain" type="string">
+  Domain slug from `list_domains`, e.g. `software-engineering`.
+</ParamField>
+
+<ParamField body="location" type="string">
+  Location substring, e.g. `Remote` or `Berlin`.
+</ParamField>
+
+<ParamField body="country" type="string">
+  ISO alpha-3 country code, e.g. `USA`, `IND`, `DEU`.
+</ParamField>
+
+<ParamField body="company" type="string">
+  Company slug, to restrict results to a single employer.
+</ParamField>
+
+<ParamField body="employment_type" type="enum">
+  One of `Full-Time`, `Part-Time`, `Contract`.
+</ParamField>
+
+<ParamField body="experience_level" type="enum">
+  One of `Intern`, `Junior`, `Mid-level`, `Senior`, `Staff`, `Lead`, `Manager`, `Director`.
+</ParamField>
+
+<ParamField body="platform" type="enum">
+  ATS source: `greenhouse`, `ashby` or `ycombinator`.
+</ParamField>
+
+<ParamField body="posted" type="enum">
+  Only roles posted within this window: `today`, `3d`, `7d`, `30d`.
+</ParamField>
+
+<ParamField body="page" type="integer">
+  1-based page number. Defaults to 1.
+</ParamField>
+
+<ParamField body="limit" type="integer">
+  Results per page, 1–50. Defaults to 20.
+</ParamField>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "Find senior backend roles posted this week at YC companies, remote only."
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "What design jobs are open in Berlin right now?"
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "Show me contract data science roles in the US."
+  </Card>
+</CardGroup>
+
+## Response
+
+```json
+{
+  "total": 128,
+  "page": 1,
+  "total_pages": 7,
+  "jobs": [
+    {
+      "title": "Staff Software Engineer",
+      "company": "Ping Identity",
+      "location": "USA - Remote",
+      "domain": "Software Engineering",
+      "employment_type": "Full-Time",
+      "experience_level": "Staff",
+      "source": "greenhouse",
+      "posted_at": "2026-08-22T16:26:21.462Z",
+      "apply_url": "https://job-boards.greenhouse.io/pingidentity/jobs/8676157002",
+      "workway_url": "https://workway.dev/job/ping-identity-staff-software-engineer-8676157002",
+      "slug": "ping-identity-staff-software-engineer-8676157002"
+    }
+  ],
+  "cta": "Browse more roles and save searches at https://workway.dev/jobs"
+}
+```
+
+<Tip>
+  Call `list_domains` first if you need a valid `domain` slug — passing an unknown one returns the full list of allowed values.
+</Tip>
+
+<Tip>
+  Filters combine with AND. Narrow gradually rather than sending every filter at once.
+</Tip>

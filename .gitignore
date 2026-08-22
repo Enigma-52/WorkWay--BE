@@ -1,3 +1,6 @@
 /node_modules
 .env
 /logs
+
+# Mintlify local preview cache
+mcp/docs/.mintlify/

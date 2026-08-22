@@ -1,0 +1,66 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "WorkWay MCP",
+  "description": "Search 490,000+ live job openings from inside Claude and any MCP client.",
+  "colors": {
+    "primary": "#84cc16",
+    "light": "#a3e635",
+    "dark": "#65a30d"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting started",
+        "pages": [
+          "index",
+          "quickstart",
+          "authentication"
+        ]
+      },
+      {
+        "group": "Concepts",
+        "pages": [
+          "concepts",
+          "filters",
+          "faq"
+        ]
+      },
+      {
+        "group": "Tools",
+        "pages": [
+          "tools/search-jobs",
+          "tools/get-company-overview",
+          "tools/list-domains",
+          "tools/get-workway-info",
+          "tools/save-job",
+          "tools/list-saved-jobs",
+          "tools/follow-company",
+          "tools/list-alerts",
+          "tools/get-talent-profile",
+          "tools/update-talent-profile"
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Browse jobs",
+        "href": "https://workway.dev/jobs"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get an API key",
+      "href": "https://workway.dev/dashboard/seeker/api-keys"
+    }
+  },
+  "footer": {
+    "socials": {
+      "website": "https://workway.dev",
+      "github": "https://github.com/Enigma-52/WorkWay--BE"
+    }
+  }
+}

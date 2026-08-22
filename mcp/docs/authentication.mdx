@@ -1,0 +1,109 @@
+---
+title: "Authentication"
+description: "How WorkWay API keys are issued, scoped, tracked and revoked."
+icon: "key"
+---
+
+Every MCP tool call requires a WorkWay API key. There is no anonymous tier and no
+per-tool exemption — search is authenticated for the same reason saving a job is.
+
+## The key format
+
+Keys look like this:
+
+```text
+wk_live_953762a06918192c1ee46dbdba9bb6f3a8043a0bcba1035b
+```
+
+They are sent as a bearer token:
+
+```http
+Authorization: Bearer wk_live_953762a06918192c1ee46dbdba9bb6f3a8043a0bcba1035b
+```
+
+## How keys are stored
+
+<Warning>
+  A key is displayed **once**, at the moment you create it. It cannot be
+  recovered afterwards — not by you, and not by WorkWay support.
+</Warning>
+
+Only a SHA-256 hash of the key is written to the database, alongside a short
+non-secret prefix (`wk_live_953762`) used to identify the key in the dashboard.
+A leak of that table yields nothing an attacker could authenticate with.
+
+This is the same one-way scheme WorkWay uses for magic-link tokens.
+
+## Lifecycle
+
+<AccordionGroup>
+  <Accordion title="Expiry" icon="clock">
+    A key can be issued to expire in 30 days, 90 days, a year, or never. Expiry
+    is evaluated on every request, so an expired key stops working the moment it
+    lapses rather than at the next login.
+  </Accordion>
+
+  <Accordion title="Usage tracking" icon="chart-line">
+    Each key records a `usage_count` and a `last_used_at` timestamp, updated on
+    every successful call. Both are visible in the dashboard, so activity you do
+    not recognise is easy to spot. Rejected requests never increment usage.
+  </Accordion>
+
+  <Accordion title="Revocation" icon="ban">
+    Revoking marks the key revoked immediately; the very next request using it is
+    rejected. Other keys on the account are unaffected. Revocation is permanent —
+    generate a new key rather than trying to restore one.
+  </Accordion>
+
+  <Accordion title="Rate limits" icon="gauge">
+    Key *creation* is limited to 20 keys per hour per account. Reading and
+    revoking keys is unlimited, since both are idempotent.
+  </Accordion>
+</AccordionGroup>
+
+## What a key can and cannot do
+
+A key authenticates as its owner for the MCP tools only.
+
+**It can:** search jobs, read company and domain data, save jobs, follow
+companies, and read or edit that account's talent profile.
+
+**It cannot:** change your email, password or billing; delete your account; or
+act on any other user's account.
+
+<Note>
+  Every write tool resolves the acting user from the key itself and **ignores any
+  user id passed as an argument**. Supplying someone else's id to `save_job` has
+  no effect — the job is saved to the key owner's account.
+</Note>
+
+## Good practice
+
+<CardGroup cols={2}>
+  <Card title="One key per client" icon="layer-group">
+    A key for your laptop and another for a server means revoking either leaves
+    the other working.
+  </Card>
+  <Card title="Expire temporary keys" icon="hourglass">
+    Testing something, or on a shared machine? A 30-day key limits the damage if
+    you forget about it.
+  </Card>
+  <Card title="Never commit a key" icon="shield">
+    Keep it in your MCP client config or an environment variable, not in a
+    repository.
+  </Card>
+  <Card title="Check usage" icon="eye">
+    Last-used time and call count make unexpected activity obvious.
+  </Card>
+</CardGroup>
+
+## Managing keys via REST
+
+The dashboard is a thin wrapper over three endpoints, authenticated by your
+WorkWay session rather than by an API key:
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/api-keys` | List your keys (hashes never returned). |
+| `POST` | `/api/api-keys` | Create a key. Returns `raw_key` once. |
+| `DELETE` | `/api/api-keys/:id` | Revoke a key. |

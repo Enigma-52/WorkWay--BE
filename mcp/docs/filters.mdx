@@ -1,0 +1,110 @@
+---
+title: "Filter reference"
+sidebarTitle: "Filters"
+description: "Every value search_jobs accepts, and what happens when you pass something else."
+icon: "filter"
+---
+
+`search_jobs` validates every filter against the same service the website uses.
+Passing an unrecognised value returns an error listing what is allowed, so an
+assistant can correct itself without guessing.
+
+## ATS source
+
+`platform` — which applicant tracking system the role was posted through.
+
+| Value | Source |
+|---|---|
+| `greenhouse` | Greenhouse job boards |
+| `ashby` | Ashby job boards |
+| `ycombinator` | Y Combinator's job board |
+
+## Employment type
+
+`employment_type`
+
+`Full-Time` · `Part-Time` · `Contract`
+
+<Note>
+  Values are case-sensitive and hyphenated exactly as shown.
+</Note>
+
+## Experience level
+
+`experience_level`
+
+`Intern` · `Junior` · `Mid-level` · `Senior` · `Staff` · `Lead` · `Manager` · `Director`
+
+## Recency
+
+`posted` — only roles first seen within the window.
+
+| Value | Window |
+|---|---|
+| `today` | Since midnight today |
+| `3d` | Last 3 days |
+| `7d` | Last week |
+| `30d` | Last month |
+
+## Location
+
+Two independent filters, usable together:
+
+<ParamField body="location" type="string">
+  Substring match against the role's location text — `Remote`, `Berlin`,
+  `New York`. Good for free-form matching, including remote roles.
+</ParamField>
+
+<ParamField body="country" type="string">
+  ISO alpha-3 country code — `USA`, `IND`, `DEU`, `GBR`. Matched on word
+  boundaries, so `IND` will not also match "Indianapolis".
+</ParamField>
+
+## Domain
+
+`domain` — a slug from `list_domains`, e.g. `software-engineering`,
+`ai-data-science`, `design`.
+
+<Tip>
+  Call `list_domains` rather than guessing. It returns all 27 domains with their
+  current open-role counts, and the slugs are the authoritative values.
+</Tip>
+
+## Company
+
+`company` — a company slug, to restrict results to a single employer. For a
+fuller picture of one company, `get_company_overview` is usually the better tool.
+
+## Pagination
+
+<ParamField body="page" type="integer">
+  1-based page number. Defaults to `1`.
+</ParamField>
+
+<ParamField body="limit" type="integer">
+  Results per page, between 1 and 50. Defaults to `20`.
+</ParamField>
+
+Responses include `total`, `page` and `total_pages` so an assistant knows whether
+more results exist.
+
+## Combining filters
+
+Filters combine with **AND**. This finds senior or staff remote engineering roles
+posted in the last week through Ashby:
+
+```json
+{
+  "domain": "software-engineering",
+  "experience_level": "Senior",
+  "location": "Remote",
+  "platform": "ashby",
+  "posted": "7d"
+}
+```
+
+<Warning>
+  Stacking many filters at once can return zero results. Narrow gradually —
+  start broad, then add constraints — so it stays clear which filter emptied the
+  set.
+</Warning>

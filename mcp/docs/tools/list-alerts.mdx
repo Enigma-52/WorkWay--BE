@@ -1,0 +1,41 @@
+---
+title: "list_alerts"
+sidebarTitle: "list_alerts"
+description: "Companies you follow, and whether alerts are live."
+icon: "rss"
+---
+
+<Note>
+  **Read tool** — answers questions; nothing is modified. Requires a WorkWay API key.
+</Note>
+
+Lists every company the account follows. The response includes `email_alerts_active` so it is always clear whether new-role emails will actually be delivered on the current plan.
+
+
+## Parameters
+
+<Info>This tool takes no arguments.</Info>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "Which companies am I following?"
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "Am I getting email alerts right now?"
+  </Card>
+</CardGroup>
+
+## Response
+
+```json
+{
+  "count": 7,
+  "email_alerts_active": false,
+  "following": [
+    { "company": "Figma", "slug": "figma", "workway_url": "https://workway.dev/company/figma" }
+  ],
+  "dashboard_url": "https://workway.dev/dashboard/seeker/alerts"
+}
+```

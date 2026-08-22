@@ -1,0 +1,100 @@
+---
+title: "update_talent_profile"
+sidebarTitle: "update_talent_profile"
+description: "Build or edit your profile from the chat."
+icon: "pen-to-square"
+---
+
+<Note>
+  **Write tool** — changes something on the account that owns the API key. Requires a WorkWay API key.
+</Note>
+
+Creates the talent profile if none exists, otherwise patches only the fields supplied — everything else is left untouched. Creating a profile for the first time requires a username.
+
+
+## Parameters
+
+<ParamField body="username" type="string">
+  Public handle, 3–30 characters, letters/numbers/underscores. Required when creating.
+</ParamField>
+
+<ParamField body="display_name" type="string">
+  Name shown on the public profile.
+</ParamField>
+
+<ParamField body="professional_title" type="string">
+  Headline, e.g. `Senior Backend Engineer`.
+</ParamField>
+
+<ParamField body="about" type="string">
+  Bio or summary paragraph.
+</ParamField>
+
+<ParamField body="category" type="string">
+  e.g. `Engineering`, `Design`, `Product`.
+</ParamField>
+
+<ParamField body="experience_level" type="string">
+  e.g. `Senior`, `Mid-level`.
+</ParamField>
+
+<ParamField body="years_of_experience" type="string">
+  Free-text years of experience.
+</ParamField>
+
+<ParamField body="country" type="string">
+  Country you are based in.
+</ParamField>
+
+<ParamField body="timezone" type="string">
+  Your working timezone.
+</ParamField>
+
+<ParamField body="availability_status" type="string">
+  e.g. `open_to_work`, `not_looking`.
+</ParamField>
+
+<ParamField body="employment_types" type="string[]">
+  Contract shapes you will consider.
+</ParamField>
+
+<ParamField body="notice_period_days" type="integer">
+  Notice period in days.
+</ParamField>
+
+<ParamField body="skills" type="string[]">
+  Skills to list on the profile.
+</ParamField>
+
+<ParamField body="languages" type="string[]">
+  Languages you speak.
+</ParamField>
+
+<ParamField body="social_links" type="object">
+  Map of platform to URL, e.g. `{ "github": "https://github.com/me" }`.
+</ParamField>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "Set my WorkWay headline to "Staff Backend Engineer" and add Postgres to my skills."
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "Mark me as open to work with a 30 day notice period."
+  </Card>
+</CardGroup>
+
+## Response
+
+```text
+Updated professional_title, skills. Your profile: https://workway.dev/p/rohit
+```
+
+<Tip>
+  Updates are partial. Sending only `professional_title` leaves every other field untouched.
+</Tip>
+
+<Tip>
+  The underlying columns are `professional_title`, `about` and `country` — not `headline`, `bio` or `location`.
+</Tip>

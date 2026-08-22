@@ -1,0 +1,41 @@
+---
+title: "FAQ"
+description: "Common questions about the WorkWay MCP server."
+icon: "circle-question"
+---
+
+<AccordionGroup>
+  <Accordion title="What is the WorkWay MCP server?">
+    It is a Model Context Protocol server that exposes WorkWay's job search and account features as tools an AI assistant can call directly. Once connected, you can search openings, save roles, follow companies and manage your talent profile from inside a conversation instead of switching to a browser tab.
+  </Accordion>
+
+  <Accordion title="Which AI clients can connect to it?">
+    Any MCP-compatible client. That includes Claude Desktop, Claude Code and claude.ai, plus other assistants and agent frameworks that speak MCP. The server uses the Streamable HTTP transport, so it is added as a remote server URL rather than something installed locally.
+  </Accordion>
+
+  <Accordion title="Do I need a paid plan to use it?">
+    No. A free WorkWay account can generate an API key and use every tool, including saving jobs, following companies and editing a talent profile. Pro only changes whether you receive an instant email when a company you follow posts a new role.
+  </Accordion>
+
+  <Accordion title="How is my API key kept secure?">
+    Keys are shown once at creation and only a SHA-256 hash is stored, so a database leak never yields a usable credential. Each key can carry an optional expiry, records its own usage count and last-used time, and can be revoked instantly from your dashboard.
+  </Accordion>
+
+  <Accordion title="Does WorkWay handle my job application?">
+    No, and that is deliberate. Every job result includes the untouched apply link to the company's own ATS posting. WorkWay never proxies an application or inserts its own form between you and the employer.
+  </Accordion>
+
+  <Accordion title="Where does the job data come from?">
+    Directly from the applicant tracking systems companies hire through — Greenhouse, Ashby and Y Combinator's job board. Listings are refreshed daily, so results reflect what is actually live rather than a stale re-post from another aggregator.
+  </Accordion>
+
+  <Accordion title="Can the server act on someone else's account?">
+    No. Every write tool resolves the acting user from the API key itself and ignores any user id passed as an argument, so a key can only ever read and modify its own account.
+  </Accordion>
+</AccordionGroup>
+
+## Still stuck?
+
+<Card title="Contact WorkWay" icon="envelope" href="https://workway.dev/contact">
+  Send us the question and we'll get back to you.
+</Card>
