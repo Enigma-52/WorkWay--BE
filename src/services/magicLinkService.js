@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { Resend } from 'resend';
 import { magicLinksDao } from '../dao/magicLinksDao.js';
 import { usersDao } from '../dao/usersDao.js';
+import { emailLogDao } from '../dao/emailLogDao.js';
 import { logger } from '../utils/logger.js';
 import { magicLinkEmailHtml, EMAIL_FROM } from '../utils/emailTemplates.js';
 import { sendWelcomeEmail } from './lifecycleEmailService.js';
@@ -31,20 +32,34 @@ export async function sendMagicLink({ email, ipAddress, userAgent, callbackUrl }
     ? `${frontendOrigin}/auth/verify?token=${raw}&callbackUrl=${encodeURIComponent(callbackUrl)}`
     : `${frontendOrigin}/auth/verify?token=${raw}`;
 
-  const { error } = await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: EMAIL_FROM,
     to: email,
     subject: 'Your WorkWay sign-in link',
     html: magicLinkEmailHtml({ link }),
   });
 
+  // Only an existing user has an email_log-eligible row (the table's
+  // user_id FK requires one) — a brand-new email signing in for the first
+  // time has no user row yet at this point, so there's nothing to attach
+  // the log to. That's fine: this is meant to diagnose "I'm not getting my
+  // sign-in email" for people who already have an account, the common case.
+  const existingUser = await usersDao.getByEmail(email);
+
   if (error) {
     logger.error('Resend email failed', { error, email });
+    if (existingUser) {
+      await emailLogDao.log({ userId: existingUser.id, emailType: 'magic_link', status: 'failed', error: error.message, recipient: email });
+    }
     await magicLinksDao.deleteById(insertedRow.id);
     throw new Error('Failed to send magic link email');
   }
 
-  logger.info('Magic link sent', { email });
+  if (existingUser) {
+    await emailLogDao.log({ userId: existingUser.id, emailType: 'magic_link', providerMessageId: data?.id ?? null, recipient: email });
+  }
+
+  logger.info('Magic link sent', { email, providerMessageId: data?.id });
 }
 
 export async function verifyMagicLink({ token }) {
