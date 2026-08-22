@@ -1,6 +1,6 @@
 import { jobsDao, DEFAULT_LIMIT, MAX_LIMIT } from '../dao/jobsDao.js';
 import { getSkillBySlug } from '../data/skills.js';
-import { JOB_DOMAINS, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../utils/constants.js';
+import { JOB_DOMAINS, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS, JOB_PLATFORMS } from '../utils/constants.js';
 import { pickRelevantDescriptionSections } from '../utils/helper.js';
 import { isValidCountryCode } from '../utils/countryAliases.js';
 
@@ -23,7 +23,8 @@ function isUnfilteredQuery(filters) {
     !filters.country &&
     !filters.company_slug &&
     !filters.skill_slug &&
-    !filters.posted_since
+    !filters.posted_since &&
+    !filters.platform
   );
 }
 
@@ -263,6 +264,19 @@ export function normalizeAndValidateListParams(query) {
   const location = typeof query.location === 'string' ? query.location.trim() : '';
   const companySlug = typeof query.company_slug === 'string' ? query.company_slug.trim() : '';
 
+  const platformRaw = typeof query.platform === 'string' ? query.platform.trim().toLowerCase() : 'all';
+  let platform = null;
+  if (platformRaw && platformRaw !== 'all') {
+    if (!JOB_PLATFORMS.includes(platformRaw)) {
+      return {
+        error: true,
+        status: 400,
+        message: `Invalid platform: ${query.platform}. Allowed: ${JOB_PLATFORMS.join(', ')}, or 'all'.`,
+      };
+    }
+    platform = platformRaw;
+  }
+
   const countryRaw = typeof query.country === 'string' ? query.country.trim().toUpperCase() : '';
   let country = null;
   if (countryRaw && countryRaw !== 'ALL') {
@@ -296,6 +310,7 @@ export function normalizeAndValidateListParams(query) {
     company_slug: companySlug || null,
     skill_slug: skill_slug,
     posted_since: postedSince,
+    platform,
   };
 
   return {
@@ -319,6 +334,7 @@ export function normalizeAndValidateListParams(query) {
       company_slug: companySlug || undefined,
       skill: skill_slug ?? undefined,
       posted: postedRaw && postedRaw !== 'all' ? postedRaw : undefined,
+      platform: platform ?? 'all',
       sort,
     },
   };
