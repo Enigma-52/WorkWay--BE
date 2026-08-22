@@ -4,7 +4,7 @@ import PostgresDao from './dao.js';
 //
 // CREATE TABLE IF NOT EXISTS api_keys (
 //   id           SERIAL PRIMARY KEY,
-//   user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+//   user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,  -- users.id is uuid
 //   name         TEXT NOT NULL,
 //   key_hash     TEXT NOT NULL UNIQUE,   -- sha256 of the raw key; raw is never stored
 //   key_prefix   TEXT NOT NULL,          -- first chars, shown in UI for identification

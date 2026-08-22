@@ -38,7 +38,7 @@ export async function searchJobsHandler(args = {}) {
 export async function listDomainsHandler() {
   const domains = await getAllDomainJobs();
   return ok({
-    domains: domains.map((d) => ({ name: d.domain, slug: d.slug, job_count: d.count })),
+    domains: domains.map((d) => ({ name: d.domain, slug: d.slug, job_count: d.job_count })),
     cta: `Browse by domain at ${siteUrl('/domains')}`,
   });
 }

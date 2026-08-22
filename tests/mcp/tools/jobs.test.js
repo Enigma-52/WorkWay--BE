@@ -60,9 +60,12 @@ describe('search_jobs', () => {
 });
 
 describe('list_domains', () => {
+  // getJobsPerDomain aliases the count as job_count (see filterDao GET_JOBS_PER_DOMAIN),
+  // so the mock uses that name — mapping it from `count` silently drops the number.
   it('returns domains with counts', async () => {
-    filterService.getAllDomainJobs.mockResolvedValue([{ domain: 'Software Engineering', slug: 'software-engineering', count: 120 }]);
+    filterService.getAllDomainJobs.mockResolvedValue([{ domain: 'Software Engineering', slug: 'software-engineering', job_count: 120 }]);
     const payload = JSON.parse(textOf(await listDomainsHandler()));
     expect(payload.domains[0].slug).toBe('software-engineering');
+    expect(payload.domains[0].job_count).toBe(120);
   });
 });

@@ -28,13 +28,13 @@ describe('get_talent_profile', () => {
   });
 
   it('returns the profile with its child collections', async () => {
-    talentProfilesDao.getByUserId.mockResolvedValue({ id: 3, username: 'rohit', headline: 'Eng' });
+    talentProfilesDao.getByUserId.mockResolvedValue({ id: 3, username: 'rohit', professional_title: 'Eng' });
     talentProfilesDao.getExperiences.mockResolvedValue([{ company: 'Acme' }]);
 
     const payload = JSON.parse(textOf(await makeGetTalentProfileHandler(ctx)()));
     expect(payload.profile.username).toBe('rohit');
     expect(payload.profile.experiences).toHaveLength(1);
-    expect(payload.profile_url).toBe('https://workway.dev/t/rohit');
+    expect(payload.profile_url).toBe('https://workway.dev/p/rohit');
   });
 });
 
@@ -43,18 +43,18 @@ describe('update_talent_profile', () => {
     talentProfilesDao.getByUserId.mockResolvedValue(null);
     talentProfilesDao.create.mockResolvedValue({ id: 3, username: 'rohit' });
 
-    await makeUpdateTalentProfileHandler(ctx)({ username: 'rohit', headline: 'Eng' });
+    await makeUpdateTalentProfileHandler(ctx)({ username: 'rohit', professional_title: 'Eng' });
     expect(talentProfilesDao.create).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 7, username: 'rohit', headline: 'Eng' })
+      expect.objectContaining({ userId: 7, username: 'rohit', professional_title: 'Eng' })
     );
   });
 
   it('updates only the supplied fields when a profile exists', async () => {
     talentProfilesDao.getByUserId.mockResolvedValue({ id: 3, username: 'rohit' });
-    talentProfilesDao.update.mockResolvedValue({ id: 3, username: 'rohit', headline: 'New' });
+    talentProfilesDao.update.mockResolvedValue({ id: 3, username: 'rohit', professional_title: 'New' });
 
-    await makeUpdateTalentProfileHandler(ctx)({ headline: 'New' });
-    expect(talentProfilesDao.update).toHaveBeenCalledWith(7, { headline: 'New' });
+    await makeUpdateTalentProfileHandler(ctx)({ professional_title: 'New' });
+    expect(talentProfilesDao.update).toHaveBeenCalledWith(7, { professional_title: 'New' });
   });
 
   it('rejects an empty update', async () => {
@@ -64,7 +64,7 @@ describe('update_talent_profile', () => {
 
   it('requires a username when creating', async () => {
     talentProfilesDao.getByUserId.mockResolvedValue(null);
-    const res = await makeUpdateTalentProfileHandler(ctx)({ headline: 'Eng' });
+    const res = await makeUpdateTalentProfileHandler(ctx)({ professional_title: 'Eng' });
     expect(res.isError).toBe(true);
     expect(textOf(res)).toMatch(/username/i);
   });

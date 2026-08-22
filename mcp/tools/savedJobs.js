@@ -47,7 +47,7 @@ export function makeListSavedJobsHandler(ctx) {
         company: r.company,
         location: r.location ?? null,
         employment_type: r.employment_type ?? null,
-        saved_at: r.created_at ?? null,
+        saved_at: r.saved_at ?? null,
         apply_url: r.job_url ?? null,
         workway_url: siteUrl(`/job/${r.job_slug}`),
       })),
