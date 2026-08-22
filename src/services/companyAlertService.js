@@ -46,8 +46,9 @@ async function sendDigest(user, groups) {
     alertsUrl: ALERTS_URL,
   });
 
-  const { error } = await resend.emails.send({ from: FROM, to: user.email, subject: subjectFor(groups), html });
+  const { data, error } = await resend.emails.send({ from: FROM, to: user.email, subject: subjectFor(groups), html });
   if (error) throw new Error(error.message || 'Resend send failed');
+  return data?.id ?? null;
 }
 
 /**
@@ -133,15 +134,23 @@ export async function runCompanyAlertCheckCron() {
     if (!groups.length) continue;
 
     try {
-      await sendDigest({ user_id: userId, email: user.email, display_name: user.display_name }, groups);
+      const providerMessageId = await sendDigest({ user_id: userId, email: user.email, display_name: user.display_name }, groups);
       for (const g of groups) {
         for (const job of g.jobs) {
-          await emailLogDao.log({ userId, emailType: EMAIL_TYPE, referenceId: String(job.id) });
+          await emailLogDao.log({ userId, emailType: EMAIL_TYPE, referenceId: String(job.id), providerMessageId, recipient: user.email });
         }
       }
       sent++;
     } catch (err) {
       logger.error('company_alert send failed', { userId, error: err.message });
+      // One failed row per job, mirroring the per-job success rows above —
+      // otherwise a failed digest just vanishes with no DB trace of the
+      // jobs it would have covered.
+      for (const g of groups) {
+        for (const job of g.jobs) {
+          await emailLogDao.log({ userId, emailType: EMAIL_TYPE, referenceId: String(job.id), status: 'failed', error: err.message, recipient: user.email });
+        }
+      }
     }
   }
 
@@ -182,9 +191,12 @@ export async function sendTestCompanyAlertEmail(user) {
   ];
 
   const html = companyAlertEmailHtml({ displayName: user.display_name, groups, alertsUrl: ALERTS_URL });
-  const { error } = await resend.emails.send({ from: FROM, to: user.email, subject: subjectFor(groups), html });
-  if (error) throw new Error(error.message || 'Resend send failed');
+  const { data, error } = await resend.emails.send({ from: FROM, to: user.email, subject: subjectFor(groups), html });
+  if (error) {
+    await emailLogDao.log({ userId: user.id, emailType: EMAIL_TYPE, isTest: true, status: 'failed', error: error.message, recipient: user.email });
+    throw new Error(error.message || 'Resend send failed');
+  }
 
-  await emailLogDao.log({ userId: user.id, emailType: EMAIL_TYPE, isTest: true });
-  logger.info('Test company alert email sent', { userId: user.id });
+  await emailLogDao.log({ userId: user.id, emailType: EMAIL_TYPE, isTest: true, providerMessageId: data?.id ?? null, recipient: user.email });
+  logger.info('Test company alert email sent', { userId: user.id, providerMessageId: data?.id });
 }
