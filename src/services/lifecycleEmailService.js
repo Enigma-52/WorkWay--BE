@@ -19,9 +19,27 @@ const FROM = EMAIL_FROM;
 const SITE_URL = process.env.FRONTEND_ORIGIN || 'https://www.workway.dev';
 const LIFECYCLE_FLAG = 'lifecycle_emails_enabled';
 
+// Returns Resend's own message id so callers can persist it — without it
+// there's no way to look up what happened to a send (delivered / bounced /
+// spam complaint) in Resend's dashboard after the fact.
 async function send({ to, subject, html }) {
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html });
+  const { data, error } = await resend.emails.send({ from: FROM, to, subject, html });
   if (error) throw new Error(error.message || 'Resend send failed');
+  return data?.id ?? null;
+}
+
+// A send that fails still gets an email_log row (status: 'failed') instead
+// of only a Winston log line — otherwise "did we even try to email this
+// person" is unanswerable from the DB after the fact.
+async function sendAndLog({ user, emailType, isTest, to, subject, html }) {
+  try {
+    const providerMessageId = await send({ to, subject, html });
+    await emailLogDao.log({ userId: user.id, emailType, isTest, providerMessageId, recipient: to });
+    logger.info(`${emailType} email sent`, { userId: user.id, isTest, providerMessageId });
+  } catch (err) {
+    await emailLogDao.log({ userId: user.id, emailType, isTest, status: 'failed', error: err.message, recipient: to });
+    throw err;
+  }
 }
 
 export async function sendWelcomeEmail(user, { isTest = false } = {}) {
@@ -29,9 +47,7 @@ export async function sendWelcomeEmail(user, { isTest = false } = {}) {
     displayName: user.display_name || user.first_name || null,
     jobsUrl: `${SITE_URL}/jobs`,
   });
-  await send({ to: user.email, subject: 'Welcome to WorkWay', html });
-  await emailLogDao.log({ userId: user.id, emailType: 'welcome', isTest });
-  logger.info('Welcome email sent', { userId: user.id, isTest });
+  await sendAndLog({ user, emailType: 'welcome', isTest, to: user.email, subject: 'Welcome to WorkWay', html });
 }
 
 export async function sendFeedbackRequestEmail(user, { isTest = false } = {}) {
@@ -39,9 +55,7 @@ export async function sendFeedbackRequestEmail(user, { isTest = false } = {}) {
     displayName: user.display_name || user.first_name || null,
     feedbackUrl: 'https://workway.featurebase.app/',
   });
-  await send({ to: user.email, subject: "How's WorkWay working for you?", html });
-  await emailLogDao.log({ userId: user.id, emailType: 'feedback_7day', isTest });
-  logger.info('7-day feedback email sent', { userId: user.id, isTest });
+  await sendAndLog({ user, emailType: 'feedback_7day', isTest, to: user.email, subject: "How's WorkWay working for you?", html });
 }
 
 export async function sendWeeklySummaryEmail(user, { isTest = false } = {}) {
@@ -63,9 +77,7 @@ export async function sendWeeklySummaryEmail(user, { isTest = false } = {}) {
     unsubscribeUrl,
   });
 
-  await send({ to: user.email, subject: 'Your week on WorkWay', html });
-  await emailLogDao.log({ userId: user.id, emailType: 'weekly_summary', isTest });
-  logger.info('Weekly summary email sent', { userId: user.id, isTest });
+  await sendAndLog({ user, emailType: 'weekly_summary', isTest, to: user.email, subject: 'Your week on WorkWay', html });
 }
 
 const SENDERS = {
