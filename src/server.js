@@ -14,6 +14,7 @@ import { runPgStatement } from './dao/dao.js';
 import { initPassportSession } from './services/authService.js';
 import { startCronScheduler } from './services/cronScheduler.js';
 import dodoWebhookRoutes from './routes/dodoWebhook.js';
+import resendWebhookRoutes from './routes/resendWebhook.js';
 
 
 const app = express();
@@ -30,6 +31,10 @@ app.set('trust proxy', 1);
 // express.json() below, which would otherwise re-serialize the body and
 // break signature verification.
 app.use('/api/billing/webhook', express.raw({ type: 'application/json' }), dodoWebhookRoutes);
+
+// Same raw-body requirement as the Dodo webhook above — Resend also signs
+// the exact bytes it sent.
+app.use('/api/email/webhook', express.raw({ type: 'application/json' }), resendWebhookRoutes);
 
 // Middleware
 app.use(express.json());
