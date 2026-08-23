@@ -4,8 +4,14 @@ import { emailLogDao } from '../dao/emailLogDao.js';
 import { usersDao } from '../dao/usersDao.js';
 import { isPro } from '../utils/plans.js';
 import { logger } from '../utils/logger.js';
+import { requireInternalSecret } from '../utils/internalAuth.js';
 
 const router = express.Router();
+
+// user_id here is client-supplied with no session check of its own — this
+// router must only ever be reachable from the session-checked Next.js BFF
+// layer, never the browser directly, or user_id becomes guessable IDOR.
+router.use(requireInternalSecret);
 
 // GET /api/alerts/recent?user_id=X — the "Alerts" dashboard tab's data source.
 // Gated server-side on plan, before any job data is fetched: a free request
