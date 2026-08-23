@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../../src/dao/alertsDao.js', () => ({
-  alertsDao: { createAlert: vi.fn(), getByUser: vi.fn() },
+  alertsDao: { createAlert: vi.fn(), getByUser: vi.fn(), checkAlert: vi.fn(), deleteAlert: vi.fn() },
 }));
 vi.mock('../../../src/services/companyService.js', () => ({ getCompanyDetails: vi.fn() }));
 
 const { alertsDao } = await import('../../../src/dao/alertsDao.js');
 const companyService = await import('../../../src/services/companyService.js');
-const { makeFollowCompanyHandler, makeListAlertsHandler } = await import('../../../mcp/tools/alerts.js');
+const { makeFollowCompanyHandler, makeUnfollowCompanyHandler, makeListAlertsHandler } = await import('../../../mcp/tools/alerts.js');
 
 const freeCtx = { user: { id: 7, plan_key: 'free' } };
 const proCtx = { user: { id: 7, plan_key: 'pro' } };
@@ -55,6 +55,22 @@ describe('follow_company', () => {
     const res = await makeFollowCompanyHandler(proCtx)({ company: 'acme' });
     expect(res.isError).toBeUndefined();
     expect(textOf(res)).toMatch(/already/i);
+  });
+});
+
+describe('unfollow_company', () => {
+  it('deletes the follow when one exists', async () => {
+    alertsDao.checkAlert.mockResolvedValue({ id: 5 });
+    const res = await makeUnfollowCompanyHandler(freeCtx)({ company: 'acme' });
+    expect(res.isError).toBeUndefined();
+    expect(alertsDao.deleteAlert).toHaveBeenCalledWith({ id: 5, userId: 7 });
+  });
+
+  it('reports plainly when not following the company', async () => {
+    alertsDao.checkAlert.mockResolvedValue(null);
+    const text = textOf(await makeUnfollowCompanyHandler(freeCtx)({ company: 'acme' }));
+    expect(text).toMatch(/aren't following/i);
+    expect(alertsDao.deleteAlert).not.toHaveBeenCalled();
   });
 });
 

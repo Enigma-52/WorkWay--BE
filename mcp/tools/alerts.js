@@ -45,6 +45,19 @@ export function makeFollowCompanyHandler(ctx) {
   };
 }
 
+export function makeUnfollowCompanyHandler(ctx) {
+  return async (args = {}) => {
+    const slug = String(args.company ?? '').trim().toLowerCase();
+    if (!slug) return fail('A company slug is required.');
+
+    const existing = await alertsDao.checkAlert({ userId: ctx.user.id, alertType: 'company', companySlug: slug });
+    if (!existing) return okText(`You aren't following "${slug}", so there's nothing to remove.`);
+
+    await alertsDao.deleteAlert({ id: existing.id, userId: ctx.user.id });
+    return okText(`Unfollowed "${slug}".`);
+  };
+}
+
 export function makeListAlertsHandler(ctx) {
   return async () => {
     const rows = await alertsDao.getByUser(ctx.user.id);
@@ -73,6 +86,16 @@ export function registerAlertTools(server, ctx) {
       inputSchema: { company: z.string().describe("Company slug, e.g. 'stripe'") },
     },
     makeFollowCompanyHandler(ctx)
+  );
+
+  server.registerTool(
+    'unfollow_company',
+    {
+      title: 'Unfollow a company',
+      description: 'Stop following a company on the signed-in WorkWay account.',
+      inputSchema: { company: z.string().describe("Company slug, e.g. 'stripe'") },
+    },
+    makeUnfollowCompanyHandler(ctx)
   );
 
   server.registerTool(
