@@ -24,7 +24,7 @@ curl -s -X POST http://localhost:3000/api/api-keys \
 
 | # | Check | Result |
 |---|---|---|
-| 1 | `POST /mcp` with no `Authorization` header | 401, message points at `workway.dev/dashboard/seeker/api-keys` |
+| 1 | `POST /api/mcp` with no `Authorization` header | 401, message points at `workway.dev/dashboard/seeker/api-keys` |
 | 2 | `tools/list` with a valid key | all 9 tools returned with correct JSON schemas |
 | 3 | `search_jobs` | live results, `apply_url` (ATS) + `workway_url` + CTA all present |
 | 4 | `search_jobs` with `platform: "ashby"` | filtered to ashby postings |

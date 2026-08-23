@@ -11,7 +11,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://api.workway.dev/mcp",
+      "url": "https://www.workway.dev/api/mcp",
       "headers": [
         {
           "name": "Authorization",

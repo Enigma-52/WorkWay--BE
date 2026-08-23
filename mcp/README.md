@@ -5,7 +5,7 @@ Protocol](https://modelcontextprotocol.io) tools, so an AI assistant can search
 openings, save roles, follow companies and manage a talent profile on a user's
 behalf.
 
-**Docs:** https://docs.workway.dev · **Landing page:** https://workway.dev/mcp · **Endpoint:** `https://api.workway.dev/mcp`
+**Docs:** https://docs.workway.dev · **Landing page:** https://workway.dev/mcp · **Endpoint:** `https://www.workway.dev/api/mcp`
 
 ## Why
 
@@ -25,7 +25,7 @@ Generate an API key at
 {
   "mcpServers": {
     "workway": {
-      "url": "https://api.workway.dev/mcp",
+      "url": "https://www.workway.dev/api/mcp",
       "headers": {
         "Authorization": "Bearer wk_live_your_key_here"
       }
@@ -58,7 +58,7 @@ the same reference material for clients that browse resources.
 WorkWay--BE/
   src/            Express REST API (routes, dao, services)
   mcp/
-    server.js       MCP entrypoint, Streamable HTTP transport, mounted at /mcp
+    server.js       MCP entrypoint, Streamable HTTP transport, mounted at /api/mcp
     auth.js         API key -> user resolution
     format.js       Job formatting; apply_url + workway_url on every result
     resources.js    workway://about | tools | api
@@ -94,7 +94,7 @@ they are not.
 ## Development
 
 ```bash
-npm run dev                 # boots the API with /mcp mounted
+npm run dev                 # boots the API with /api/mcp mounted
 npx vitest run tests/mcp/   # MCP unit tests
 ```
 
