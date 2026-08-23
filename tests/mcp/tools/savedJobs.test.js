@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../../src/dao/savedJobsDao.js', () => ({
-  savedJobsDao: { saveJob: vi.fn(), getByUser: vi.fn() },
+  savedJobsDao: { saveJob: vi.fn(), unsaveJob: vi.fn(), getByUser: vi.fn() },
 }));
 vi.mock('../../../src/dao/jobsDao.js', () => ({
   jobsDao: { getSingleJob: vi.fn() },
@@ -9,7 +9,7 @@ vi.mock('../../../src/dao/jobsDao.js', () => ({
 
 const { savedJobsDao } = await import('../../../src/dao/savedJobsDao.js');
 const { jobsDao } = await import('../../../src/dao/jobsDao.js');
-const { makeSaveJobHandler, makeListSavedJobsHandler } = await import('../../../mcp/tools/savedJobs.js');
+const { makeSaveJobHandler, makeUnsaveJobHandler, makeListSavedJobsHandler } = await import('../../../mcp/tools/savedJobs.js');
 
 const ctx = { user: { id: 7, plan_key: 'free' } };
 beforeEach(() => vi.clearAllMocks());
@@ -35,6 +35,20 @@ describe('save_job', () => {
     jobsDao.getSingleJob.mockResolvedValue([{ slug: 'acme-eng', title: 'Engineer', company: 'Acme' }]);
     savedJobsDao.saveJob.mockResolvedValue([{ id: 1 }]);
     expect(textOf(await makeSaveJobHandler(ctx)({ job_slug: 'acme-eng' }))).toContain('workway.dev/dashboard');
+  });
+});
+
+describe('unsave_job', () => {
+  it('removes a saved job for the authenticated user', async () => {
+    savedJobsDao.unsaveJob.mockResolvedValue([{ id: 1 }]);
+    const res = await makeUnsaveJobHandler(ctx)({ job_slug: 'acme-eng' });
+    expect(res.isError).toBeUndefined();
+    expect(savedJobsDao.unsaveJob).toHaveBeenCalledWith({ userId: 7, jobSlug: 'acme-eng' });
+  });
+
+  it('reports plainly when nothing was saved to begin with', async () => {
+    savedJobsDao.unsaveJob.mockResolvedValue([]);
+    expect(textOf(await makeUnsaveJobHandler(ctx)({ job_slug: 'acme-eng' }))).toMatch(/wasn't saved/i);
   });
 });
 

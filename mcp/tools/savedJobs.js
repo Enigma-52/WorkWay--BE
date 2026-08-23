@@ -37,6 +37,18 @@ export function makeSaveJobHandler(ctx) {
   };
 }
 
+export function makeUnsaveJobHandler(ctx) {
+  return async (args = {}) => {
+    const slug = String(args.job_slug ?? '').trim();
+    if (!slug) return fail('A job slug is required.');
+
+    const rows = await savedJobsDao.unsaveJob({ userId: ctx.user.id, jobSlug: slug });
+    if (!rows?.length) return okText(`"${slug}" wasn't saved to this account, so there's nothing to remove.`);
+
+    return okText(`Removed "${slug}" from your saved jobs.`);
+  };
+}
+
 export function makeListSavedJobsHandler(ctx) {
   return async () => {
     const rows = await savedJobsDao.getByUser(ctx.user.id);
@@ -65,6 +77,16 @@ export function registerSavedJobTools(server, ctx) {
       inputSchema: { job_slug: z.string().describe('Job slug, as returned by search_jobs') },
     },
     makeSaveJobHandler(ctx)
+  );
+
+  server.registerTool(
+    'unsave_job',
+    {
+      title: 'Unsave a job',
+      description: 'Remove a job from the signed-in WorkWay account saved list.',
+      inputSchema: { job_slug: z.string().describe('Job slug, as returned by search_jobs or list_saved_jobs') },
+    },
+    makeUnsaveJobHandler(ctx)
   );
 
   server.registerTool(
