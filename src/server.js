@@ -42,7 +42,10 @@ app.use(express.json());
 
 // MCP server (see mcp/ at the repo root) — authenticates with its own API-key
 // bearer scheme, separate from the session auth the REST API below uses.
-app.use('/mcp', mcpRouter);
+// Mounted under /api/ so nginx's existing `location /api/ { proxy_pass
+// backend:3000 }` catch-all routes it in production — there is no separate
+// api.workway.dev subdomain.
+app.use('/api/mcp', mcpRouter);
 // A hardcoded fallback here would let anyone forge a valid session cookie.
 // A random per-boot secret is a safe failure mode if the env var is missing:
 // existing sessions get invalidated on restart instead of being forgeable.
