@@ -1,7 +1,13 @@
 import express from 'express';
 import { savedJobsDao } from '../dao/savedJobsDao.js';
+import { requireInternalSecret } from '../utils/internalAuth.js';
 
 const router = express.Router();
+
+// user_id here is client-supplied with no session check of its own — this
+// router must only ever be reachable from the session-checked Next.js BFF
+// layer, never the browser directly, or user_id becomes guessable IDOR.
+router.use(requireInternalSecret);
 
 router.get('/summary', async (req, res) => {
   const { user_id } = req.query;
