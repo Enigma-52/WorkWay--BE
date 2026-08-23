@@ -1,7 +1,7 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Enigma-52/workway",
-  "description": "Search 490,000+ live job openings pulled straight from company ATS boards (Greenhouse, Ashby, Y Combinator), save roles, follow companies for new-posting alerts, and manage your WorkWay talent profile.",
+  "description": "Search 490k+ live jobs from company ATS boards, save roles, follow companies, manage talent profile.",
   "version": "1.0.0",
   "websiteUrl": "https://docs.workway.dev",
   "repository": {
