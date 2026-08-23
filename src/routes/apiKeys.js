@@ -2,8 +2,14 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { generateApiKey, listApiKeys, revokeApiKey } from '../services/apiKeyService.js';
 import { logger } from '../utils/logger.js';
+import { requireInternalSecret } from '../utils/internalAuth.js';
 
 const router = express.Router();
+
+// user_id here is client-supplied with no session check of its own — this
+// router must only ever be reachable from the session-checked Next.js BFF
+// layer, never the browser directly, or user_id becomes guessable IDOR.
+router.use(requireInternalSecret);
 
 // Key minting is cheap but unbounded creation would let one account fill the
 // table; the read/revoke paths are left unlimited since they are idempotent.
