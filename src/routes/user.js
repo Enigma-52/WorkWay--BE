@@ -43,7 +43,12 @@ router.post('/sync', requireInternalSecret, async (req, res) => {
 // (plan_key, roles) has drifted from the DB, e.g. right after a Dodo
 // checkout or an admin-panel grant, neither of which updates the browser's
 // existing session cookie on their own.
-router.get('/me', async (req, res) => {
+//
+// Gated on the internal secret: user_id/email here comes straight from the
+// request with no session check of its own, so this must only ever be
+// reachable from the session-checked Next.js BFF layer, never the browser
+// directly.
+router.get('/me', requireInternalSecret, async (req, res) => {
   const { user_id } = req.query;
   if (!user_id) return res.status(400).json({ error: 'user_id required' });
 
@@ -77,8 +82,11 @@ router.get('/unsubscribe', async (req, res) => {
 // granted directly in the database, never through a public API.
 const ONBOARDING_ROLES = new Set(['seeker', 'hirer']);
 
-// Called by onboarding to save role + display_name
-router.patch('/me', async (req, res) => {
+// Called by onboarding to save role + display_name. Gated on the internal
+// secret: `email` here is client-supplied with no session check, and this
+// can set role — an unauthenticated caller could otherwise grant themselves
+// (or anyone) 'hirer' by guessing an email.
+router.patch('/me', requireInternalSecret, async (req, res) => {
   const { email, role, display_name } = req.body;
 
   if (!email || !role) {
