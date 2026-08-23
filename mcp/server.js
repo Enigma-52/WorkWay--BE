@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { logger } from '../src/utils/logger.js';
@@ -12,6 +13,29 @@ import { registerInfoTools } from './tools/info.js';
 import { registerResources } from './resources.js';
 
 const router = express.Router();
+
+// Keyed by the raw bearer token so one key's traffic can't crowd out another's,
+// and so a flood of invalid keys can't force a DB lookup per request — this
+// runs before resolveApiKey. Falls back to IP for requests with no token at
+// all. Generous on purpose: tool calls are unlimited by design (see mcp/README.md),
+// this just puts a ceiling on runaway/misbehaving clients.
+const mcpLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const token = req.headers?.authorization?.split(' ')?.[1];
+    return token || ipKeyGenerator(req.ip);
+  },
+  handler: (req, res) => {
+    res.status(429).json({
+      jsonrpc: '2.0',
+      error: { code: -32029, message: 'Too many requests. Please slow down and try again shortly.' },
+      id: req.body?.id ?? null,
+    });
+  },
+});
 
 // A fresh server per request keeps each caller's authenticated user isolated —
 // tools close over `user`, so a shared long-lived instance would leak identity
@@ -34,7 +58,7 @@ function buildServer(user) {
   return server;
 }
 
-router.post('/', async (req, res) => {
+router.post('/', mcpLimiter, async (req, res) => {
   const auth = await resolveApiKey(req);
   if (!auth.ok) {
     return res.status(401).json({
