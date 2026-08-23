@@ -31,13 +31,19 @@
         "group": "Tools",
         "pages": [
           "tools/search-jobs",
+          "tools/get-job-details",
           "tools/get-company-overview",
           "tools/list-domains",
           "tools/get-workway-info",
           "tools/save-job",
+          "tools/unsave-job",
           "tools/list-saved-jobs",
           "tools/follow-company",
+          "tools/unfollow-company",
           "tools/list-alerts",
+          "tools/log-application",
+          "tools/update-application-status",
+          "tools/list-applications",
           "tools/get-talent-profile",
           "tools/update-talent-profile"
         ]

@@ -1,0 +1,40 @@
+---
+title: "unfollow_company"
+sidebarTitle: "unfollow_company"
+description: "Stop tracking a company."
+icon: "bell-slash"
+---
+
+<Note>
+  **Write tool** — changes something on the account that owns the API key. Requires a WorkWay API key.
+</Note>
+
+Stops following a company on the account that owns the API key. Instant email alerts for that company, if any were active, stop too.
+
+
+## Parameters
+
+<ParamField body="company" type="string" required>
+  Company slug, e.g. `stripe`.
+</ParamField>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "Unfollow Figma."
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "I'm not interested in Stripe anymore, stop tracking them."
+  </Card>
+</CardGroup>
+
+## Response
+
+```text
+Unfollowed "figma".
+```
+
+<Tip>
+  Unfollowing a company you never followed is a no-op, not an error — the response just says so plainly.
+</Tip>

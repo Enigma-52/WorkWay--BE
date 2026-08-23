@@ -69,18 +69,20 @@ Pricing: ${siteUrl('/pricing')}
 function toolsBody() {
   return `# WorkWay MCP tools
 
-Nine tools, all requiring a WorkWay API key. Generate one at
+Fifteen tools, all requiring a WorkWay API key. Generate one at
 ${siteUrl('/dashboard/seeker/api-keys')} and send it as \`Authorization: Bearer <key>\`.
 
 ## Read
 
 | Tool | Purpose |
 |---|---|
-| \`search_jobs\` | Search live openings by text, domain, location, country, company, employment type, experience level, ATS source, or recency. Paginated. |
+| \`search_jobs\` | Search live openings by text, domain, location, country, company, employment type, experience level, ATS source, skill, or recency. Paginated. Each result is metadata only — no full description. |
+| \`get_job_details\` | One job by slug, with its full description, required skills, and compensation if listed. Use this to reason about a specific role, e.g. comparing it against a talent profile. |
 | \`get_company_overview\` | One company: description, open-role count, breakdown by domain, most recent postings. |
 | \`list_domains\` | Every job domain with its current open-role count. Use this to discover valid \`domain\` slugs. |
 | \`list_saved_jobs\` | Jobs saved to the calling account. |
 | \`list_alerts\` | Companies the calling account follows, plus whether email alerts are active on this plan. |
+| \`list_applications\` | Every job application logged on the calling account, with status and notes. |
 | \`get_talent_profile\` | The calling account's talent profile, with experience, education, and certifications. |
 
 ## Write
@@ -88,7 +90,11 @@ ${siteUrl('/dashboard/seeker/api-keys')} and send it as \`Authorization: Bearer 
 | Tool | Purpose |
 |---|---|
 | \`save_job\` | Save a job by slug to the calling account. |
+| \`unsave_job\` | Remove a job from the calling account's saved list. |
 | \`follow_company\` | Follow a company. Works on every plan; instant email alerts require Pro. |
+| \`unfollow_company\` | Stop following a company. |
+| \`log_application\` | Record that the calling account applied to a job. |
+| \`update_application_status\` | Update the status (\`Applied\`, \`Interview\`, \`Offer\`, \`Rejected\`) and/or notes on a logged application. |
 | \`update_talent_profile\` | Create or patch the calling account's talent profile. Only supplied fields change. |
 
 ## Filter vocabularies
@@ -101,6 +107,8 @@ Use these exact values — anything else is rejected with the allowed list.
 - **Posted within** (\`posted\`): today, 3d, 7d, 30d
 - **Domain**: a slug from \`list_domains\`, e.g. \`software-engineering\`
 - **Country**: ISO alpha-3, e.g. \`USA\`, \`IND\`, \`DEU\`
+- **Skill** (\`skill\`, on \`search_jobs\`): a skill slug, e.g. \`python\`, \`kubernetes\`
+- **Application status** (\`status\`, on \`update_application_status\`): Applied, Interview, Offer, Rejected
 
 ## Result shape
 
@@ -108,6 +116,10 @@ Every job carries two links, deliberately:
 
 - \`apply_url\` — the untouched ATS posting. Send people here to apply.
 - \`workway_url\` — the role's page on ${SITE_ORIGIN}, for context and related roles.
+
+\`search_jobs\` results omit the full description to keep list responses light —
+call \`get_job_details\` with the job's slug when you need the actual JD text,
+required skills, or compensation to reason about a specific role.
 
 ## Conventions
 
@@ -202,7 +214,7 @@ export function registerResources(server) {
     {
       title: 'WorkWay MCP tool guide',
       description:
-        'Catalog of all nine WorkWay tools, the exact filter vocabularies they accept, the two links every job result carries, and slug conventions.',
+        'Catalog of all fifteen WorkWay tools, the exact filter vocabularies they accept, the two links every job result carries, and slug conventions.',
       mimeType: 'text/markdown',
     },
     async (uri) => text(uri.href, toolsBody())

@@ -1,0 +1,47 @@
+---
+title: "list_applications"
+sidebarTitle: "list_applications"
+description: "Every application you have logged, with status."
+icon: "clipboard-list"
+---
+
+<Note>
+  **Read tool** — answers questions; nothing is modified. Requires a WorkWay API key.
+</Note>
+
+Lists every job application logged on the account that owns the API key, with its current status and notes.
+
+
+## Parameters
+
+<Info>This tool takes no arguments.</Info>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "What's the status of my applications?"
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "Which applications am I still waiting to hear back on?"
+  </Card>
+</CardGroup>
+
+## Response
+
+```json
+{
+  "count": 3,
+  "applications": [
+    {
+      "title": "Staff Software Engineer",
+      "company": "Ping Identity",
+      "status": "Interview",
+      "notes": "Recruiter call went well",
+      "applied_at": "2026-08-20T12:00:00.000Z",
+      "workway_url": "https://workway.dev/job/ping-identity-staff-software-engineer-8676157002"
+    }
+  ],
+  "dashboard_url": "https://workway.dev/dashboard/seeker/applications"
+}
+```

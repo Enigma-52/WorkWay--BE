@@ -1,0 +1,40 @@
+---
+title: "unsave_job"
+sidebarTitle: "unsave_job"
+description: "Remove a role from your saved list."
+icon: "bookmark-slash"
+---
+
+<Note>
+  **Write tool** — changes something on the account that owns the API key. Requires a WorkWay API key.
+</Note>
+
+Removes a job from the saved-jobs list on the account that owns the API key.
+
+
+## Parameters
+
+<ParamField body="job_slug" type="string" required>
+  Job slug, as returned by `search_jobs` or `list_saved_jobs`.
+</ParamField>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "Unsave that Ping Identity role."
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "Remove the second saved job from my list."
+  </Card>
+</CardGroup>
+
+## Response
+
+```text
+Removed "ping-identity-staff-software-engineer-8676157002" from your saved jobs.
+```
+
+<Tip>
+  Unsaving a job that was never saved is a no-op, not an error — the response just says so plainly.
+</Tip>

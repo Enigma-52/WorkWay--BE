@@ -9,7 +9,7 @@ icon: "magnifying-glass"
   **Read tool** — answers questions; nothing is modified. Requires a WorkWay API key.
 </Note>
 
-The core tool. Searches active job listings pulled straight from company ATS boards, with filters for text, domain, location, country, company, employment type, experience level, ATS source and recency. Results are paginated, and every job carries both its original apply link and its WorkWay page.
+The core tool. Searches active job listings pulled straight from company ATS boards, with filters for text, domain, location, country, company, employment type, experience level, ATS source, skill and recency. Results are paginated, and every job carries both its original apply link and its WorkWay page. Each result is metadata only — call `get_job_details` for the full description of a specific role.
 
 
 ## Parameters
@@ -48,6 +48,10 @@ The core tool. Searches active job listings pulled straight from company ATS boa
 
 <ParamField body="posted" type="enum">
   Only roles posted within this window: `today`, `3d`, `7d`, `30d`.
+</ParamField>
+
+<ParamField body="skill" type="string">
+  Skill slug, e.g. `python` or `kubernetes`.
 </ParamField>
 
 <ParamField body="page" type="integer">

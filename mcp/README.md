@@ -38,14 +38,20 @@ Generate an API key at
 
 | Tool | Kind | Purpose |
 |---|---|---|
-| `search_jobs` | read | Search live openings by text, domain, location, country, company, employment type, experience level, ATS source or recency. |
+| `search_jobs` | read | Search live openings by text, domain, location, country, company, employment type, experience level, ATS source, skill, or recency. Metadata only — no full description. |
+| `get_job_details` | read | One job by slug, with full description, required skills, and compensation if listed. Use this to reason about a specific role. |
 | `get_company_overview` | read | One company: description, open-role count, breakdown by domain, recent postings. |
 | `list_domains` | read | Every job domain with its current open-role count. |
 | `get_workway_info` | read | Background on WorkWay, live coverage, valid filter values, REST API, plan differences. |
 | `save_job` | write | Save a job by slug to the calling account. |
+| `unsave_job` | write | Remove a job from the calling account's saved list. |
 | `list_saved_jobs` | read | Jobs saved to the calling account. |
 | `follow_company` | write | Follow a company. Works on every plan; instant email alerts require Pro. |
+| `unfollow_company` | write | Stop following a company. |
 | `list_alerts` | read | Companies the account follows, plus whether email alerts are active. |
+| `log_application` | write | Record that the calling account applied to a job. |
+| `update_application_status` | write | Update the status/notes on a logged application. |
+| `list_applications` | read | Every job application logged on the calling account. |
 | `get_talent_profile` | read | The account's talent profile with experience, education, certifications. |
 | `update_talent_profile` | write | Create or patch the account's talent profile. |
 

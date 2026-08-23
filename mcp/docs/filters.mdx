@@ -75,6 +75,18 @@ Two independent filters, usable together:
 `company` — a company slug, to restrict results to a single employer. For a
 fuller picture of one company, `get_company_overview` is usually the better tool.
 
+## Skill
+
+`skill` — a skill slug, e.g. `python`, `kubernetes`, `react`. Matches jobs that
+list that skill among their requirements.
+
+<Tip>
+  `search_jobs` results don't carry the full description, so a skill isn't
+  always visible in the requirements text a listing shows — it only reflects
+  what the ingestion pipeline extracted as a structured skill. If you need the
+  full JD to check for a skill mentioned in prose, call `get_job_details`.
+</Tip>
+
 ## Pagination
 
 <ParamField body="page" type="integer">

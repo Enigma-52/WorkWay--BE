@@ -1,0 +1,58 @@
+---
+title: "get_job_details"
+sidebarTitle: "get_job_details"
+description: "The full description, skills and pay for one role."
+icon: "file-lines"
+---
+
+<Note>
+  **Read tool** — answers questions; nothing is modified. Requires a WorkWay API key.
+</Note>
+
+Fetches one job by slug with its full description text, required skills, and compensation if the posting lists one — everything `search_jobs` deliberately leaves out to keep list responses light. Use this before reasoning about a specific role: comparing it against a talent profile, checking a requirement, or summarizing responsibilities.
+
+
+## Parameters
+
+<ParamField body="job_slug" type="string" required>
+  Job slug exactly as returned by `search_jobs`.
+</ParamField>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "Does that Staff Engineer role at Ping Identity need a security clearance?"
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "Summarize the responsibilities for the first job you found."
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "Does this role match my talent profile?"
+  </Card>
+</CardGroup>
+
+## Response
+
+```json
+{
+  "title": "Staff Software Engineer",
+  "company": "Ping Identity",
+  "location": "USA - Remote",
+  "domain": "Software Engineering",
+  "employment_type": "Full-Time",
+  "experience_level": "Staff",
+  "skills": [{ "name": "Kubernetes", "slug": "kubernetes" }],
+  "compensation": "$180K - $220K",
+  "description": "About the role:\nWe're looking for...\n\nRequirements:\n5+ years...",
+  "source": "greenhouse",
+  "posted_at": "2026-08-22T16:26:21.462Z",
+  "apply_url": "https://job-boards.greenhouse.io/pingidentity/jobs/8676157002",
+  "workway_url": "https://workway.dev/job/ping-identity-staff-software-engineer-8676157002",
+  "slug": "ping-identity-staff-software-engineer-8676157002"
+}
+```
+
+<Tip>
+  `compensation` and `skills` are only as complete as the original ATS posting — many postings list neither.
+</Tip>

@@ -1,0 +1,48 @@
+---
+title: "update_application_status"
+sidebarTitle: "update_application_status"
+description: "Move an application forward, or add notes."
+icon: "clipboard-check"
+---
+
+<Note>
+  **Write tool** — changes something on the account that owns the API key. Requires a WorkWay API key.
+</Note>
+
+Updates the status and/or notes on a previously logged application. Only the fields supplied are changed. Requires `log_application` to have been called for that job first.
+
+
+## Parameters
+
+<ParamField body="job_slug" type="string" required>
+  Job slug of a previously logged application.
+</ParamField>
+
+<ParamField body="status" type="enum">
+  One of `Applied`, `Interview`, `Offer`, `Rejected`.
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Free-text notes, e.g. interview feedback.
+</ParamField>
+
+## Example prompts
+
+<CardGroup cols={2}>
+  <Card title="Try asking" icon="comment">
+    "Move the Ping Identity application to Interview."
+  </Card>
+  <Card title="Try asking" icon="comment">
+    "Add a note that the recruiter call went well."
+  </Card>
+</CardGroup>
+
+## Response
+
+```text
+Updated "ping-identity-staff-software-engineer-8676157002" to Interview.
+```
+
+<Tip>
+  Supplying only `notes` leaves the current status untouched, and vice versa.
+</Tip>
