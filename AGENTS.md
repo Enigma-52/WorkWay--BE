@@ -89,3 +89,42 @@ When making non-trivial backend changes:
 - Update `README.md` if setup/API behavior changed.
 - Update `docs/DETAILED_DOCS.md` for architecture/data contract changes.
 - Add migration notes if schema assumptions changed.
+
+## 10) User-Identity Routes Must Be Gated on the Internal Secret
+
+This backend has **no session/auth layer of its own**. Any route that reads a
+client-supplied `user_id` (or `email`) straight out of `req.body`/`req.query`
+and uses it to read or write that user's data is an IDOR risk unless something
+upstream has already verified the caller is who they claim to be.
+
+That verification happens in `workway-next` (NextAuth session), not here. So:
+
+- **Any route trusting a client-supplied user identity must be mounted behind
+  `requireInternalSecret`** (`src/utils/internalAuth.js`), either via
+  `router.use(requireInternalSecret)` at the top of the route file, or applied
+  per-route if the file also has genuinely public routes (see
+  `src/routes/user.js`: `/sync` and `/me` are gated, `/unsubscribe` is not —
+  it has its own signed-token check instead).
+- This currently covers: `applications.js`, `savedJobs.js`, `alerts.js`,
+  `apiKeys.js`, and `user.js`'s `/me` (GET+PATCH). `/cron`, `/ai`, `/sync`,
+  `/scripts`, `/admin` are gated the same way, some inline in their route
+  file and some at the `router.use('/path', requireInternalSecret, routes)`
+  mount point in `src/routes/index.js` — either placement is fine, but
+  routes with genuinely public sibling endpoints (like `/user/unsubscribe`)
+  must gate per-route, not at the mount point.
+- **When adding a new route that accepts a `user_id`/`email` from the
+  request**, gate it the same way by default. Only skip the gate if the route
+  is genuinely meant to be public (rate-limited public search, a
+  cryptographically-signed one-time link, a webhook verified by its own
+  signature, etc.) — and say why in a comment, the way `/user/unsubscribe`
+  and `/api/billing/webhook` do.
+- **Pair every new gated route with a workway-next change** that sends the
+  `x-internal-api-secret` header (see workway-next's `AGENTS.md`, section on
+  the BFF pattern) — a gate with no caller sending the header just breaks the
+  feature. Deploy the frontend change first, backend second, so there's never
+  a window where the frontend calls a gate it doesn't know about yet.
+- The secret itself lives in Doppler (`workway-backend/prd` and
+  `workway-frontend/prd` configs, key `INTERNAL_API_SECRET`) — same value in
+  both, pulled into the droplet's `.env`/`frontend.env` by
+  `workway-infra/deploy.sh`. Never hardcode it; read it via
+  `process.env.INTERNAL_API_SECRET`, as `internalAuth.js` does.
