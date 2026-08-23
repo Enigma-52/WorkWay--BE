@@ -3,7 +3,7 @@
   "name": "io.github.Enigma-52/workway",
   "description": "Search 490,000+ live job openings pulled straight from company ATS boards (Greenhouse, Ashby, Y Combinator), save roles, follow companies for new-posting alerts, and manage your WorkWay talent profile.",
   "version": "1.0.0",
-  "websiteUrl": "https://workway.dev/mcp",
+  "websiteUrl": "https://docs.workway.dev",
   "repository": {
     "url": "https://github.com/Enigma-52/WorkWay--BE",
     "source": "github"

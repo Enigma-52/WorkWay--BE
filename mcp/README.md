@@ -5,7 +5,7 @@ Protocol](https://modelcontextprotocol.io) tools, so an AI assistant can search
 openings, save roles, follow companies and manage a talent profile on a user's
 behalf.
 
-**Docs:** https://workway.dev/mcp · **Endpoint:** `https://api.workway.dev/mcp`
+**Docs:** https://docs.workway.dev · **Landing page:** https://workway.dev/mcp · **Endpoint:** `https://api.workway.dev/mcp`
 
 ## Why
 

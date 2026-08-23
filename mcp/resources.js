@@ -5,7 +5,7 @@ import { SITE_ORIGIN, siteUrl } from './format.js';
 
 // Docs are published as Markdown-first pages, so an agent can fetch any of
 // these URLs directly and get prose rather than an HTML shell.
-export const DOCS_ORIGIN = `${SITE_ORIGIN}/mcp`;
+export const DOCS_ORIGIN = 'https://docs.workway.dev';
 
 const text = (uri, body) => ({
   contents: [{ uri, mimeType: 'text/markdown', text: body }],
