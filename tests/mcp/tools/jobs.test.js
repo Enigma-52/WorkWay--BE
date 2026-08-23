@@ -7,10 +7,14 @@ vi.mock('../../../src/services/jobService.js', () => ({
 vi.mock('../../../src/services/filterService.js', () => ({
   getAllDomainJobs: vi.fn(),
 }));
+vi.mock('../../../src/dao/jobsDao.js', () => ({
+  jobsDao: { getSingleJob: vi.fn() },
+}));
 
 const jobService = await import('../../../src/services/jobService.js');
 const filterService = await import('../../../src/services/filterService.js');
-const { searchJobsHandler, listDomainsHandler } = await import('../../../mcp/tools/jobs.js');
+const { jobsDao } = await import('../../../src/dao/jobsDao.js');
+const { searchJobsHandler, listDomainsHandler, getJobDetailsHandler } = await import('../../../mcp/tools/jobs.js');
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -56,6 +60,48 @@ describe('search_jobs', () => {
     expect(jobService.normalizeAndValidateListParams).toHaveBeenCalledWith(
       expect.objectContaining({ q: 'eng', employment_type: 'Full-Time', platform: 'ashby', page: 2 })
     );
+  });
+
+  it('passes a skill arg through to normalizeAndValidateListParams', async () => {
+    jobService.normalizeAndValidateListParams.mockReturnValue({ filters: {}, page: 1, limit: 20, sort: 'recent' });
+    jobService.getJobList.mockResolvedValue({ jobs: [], meta: {} });
+
+    await searchJobsHandler({ skill: 'python' });
+    expect(jobService.normalizeAndValidateListParams).toHaveBeenCalledWith(
+      expect.objectContaining({ skill: 'python' })
+    );
+  });
+});
+
+describe('get_job_details', () => {
+  it('errors when the slug matches no job', async () => {
+    jobsDao.getSingleJob.mockResolvedValue([]);
+    const res = await getJobDetailsHandler({ job_slug: 'ghost' });
+    expect(res.isError).toBe(true);
+  });
+
+  it('returns the full description text and skills, unlike search_jobs', async () => {
+    jobsDao.getSingleJob.mockResolvedValue([{
+      slug: 'acme-eng',
+      title: 'Engineer',
+      company: 'Acme',
+      url: 'https://ats.example/1',
+      description: JSON.stringify([{ heading: 'Requirements', content: ['5+ years', 'Postgres'] }]),
+      skills: [{ name: 'Python', slug: 'python' }],
+      metadata: { compensation: '$150K - $180K' },
+    }]);
+
+    const payload = JSON.parse(textOf(await getJobDetailsHandler({ job_slug: 'acme-eng' })));
+    expect(payload.description).toContain('5+ years');
+    expect(payload.skills).toEqual([{ name: 'Python', slug: 'python' }]);
+    expect(payload.compensation).toBe('$150K - $180K');
+    expect(payload.apply_url).toBe('https://ats.example/1');
+  });
+
+  it('handles a job with no description without throwing', async () => {
+    jobsDao.getSingleJob.mockResolvedValue([{ slug: 'acme-eng', title: 'Engineer', company: 'Acme' }]);
+    const payload = JSON.parse(textOf(await getJobDetailsHandler({ job_slug: 'acme-eng' })));
+    expect(payload.description).toBeNull();
   });
 });
 

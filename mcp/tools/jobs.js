@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { normalizeAndValidateListParams, getJobList } from '../../src/services/jobService.js';
 import { getAllDomainJobs } from '../../src/services/filterService.js';
-import { formatJob, JOB_CTA, siteUrl } from '../format.js';
+import { jobsDao } from '../../src/dao/jobsDao.js';
+import { formatJob, formatJobFull, JOB_CTA, siteUrl } from '../format.js';
 
 const ok = (payload) => ({ content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }] });
 const fail = (message) => ({ isError: true, content: [{ type: 'text', text: message }] });
@@ -19,6 +20,7 @@ export async function searchJobsHandler(args = {}) {
     experience_level: args.experience_level,
     platform: args.platform,
     posted: args.posted,
+    skill: args.skill,
     page: args.page,
     limit: args.limit,
   });
@@ -33,6 +35,22 @@ export async function searchJobsHandler(args = {}) {
     jobs: (data.jobs ?? []).map(formatJob),
     cta: JOB_CTA,
   });
+}
+
+// Deliberately separate from search_jobs: the full description is too heavy
+// to carry on every row of a list response, but is exactly what's needed to
+// reason about one specific role (e.g. comparing it against a talent profile).
+export async function getJobDetailsHandler(args = {}) {
+  const slug = String(args.job_slug ?? '').trim();
+  if (!slug) return fail('A job slug is required.');
+
+  const rows = await jobsDao.getSingleJob({ slug });
+  const job = rows?.[0];
+  if (!job) {
+    return fail(`No job found with slug "${slug}". Use search_jobs to find the correct slug.`);
+  }
+
+  return ok(formatJobFull(job));
 }
 
 export async function listDomainsHandler() {
@@ -62,11 +80,25 @@ export function registerJobTools(server) {
           .optional(),
         platform: z.enum(['greenhouse', 'ashby', 'ycombinator']).optional().describe('ATS source'),
         posted: z.enum(['today', '3d', '7d', '30d']).optional().describe('Only roles posted within this window'),
+        skill: z.string().optional().describe("Skill slug, e.g. 'python' or 'kubernetes'"),
         page: z.number().int().min(1).optional(),
         limit: z.number().int().min(1).max(50).optional(),
       },
     },
     searchJobsHandler
+  );
+
+  server.registerTool(
+    'get_job_details',
+    {
+      title: 'Get full job details',
+      description:
+        'Fetch one job by slug with its full description, required skills, and compensation if listed — everything needed to reason about the role (e.g. comparing it against a talent profile). search_jobs results deliberately omit the full description; use this to get it.',
+      inputSchema: {
+        job_slug: z.string().describe('Job slug, as returned by search_jobs'),
+      },
+    },
+    getJobDetailsHandler
   );
 
   server.registerTool(
