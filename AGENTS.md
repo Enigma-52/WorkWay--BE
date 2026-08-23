@@ -35,13 +35,27 @@ Layering expectation:
 - Keep service methods focused and side-effect aware.
 
 ## 4) API Surface (Current)
-Mounted at `/api`:
-- `/cron/*` ingestion/maintenance endpoints.
-- `/company/*` company list/details/overview endpoints.
-- `/job/*` job detail endpoint.
-- `/feed/*` home feed endpoint with cursor paging.
-- `/filter/*` domain filtering endpoints.
-- `/sitemap.xml` and `/sitemaps/*.xml` XML sitemap endpoints.
+Mounted at `/api` (see `src/routes/index.js` for the authoritative list):
+
+Internal-only (`requireInternalSecret`, never called by a browser):
+- `/cron/*`, `/ai/*`, `/sync/*`, `/scripts/*` — ingestion/maintenance/ops.
+- `/admin/*` — admin panel backend.
+- `/applications/*`, `/saved-jobs/*`, `/alerts/*`, `/api-keys/*`, `/user/me`,
+  `/user/sync` — user-identity routes; only the workway-next BFF may call
+  these (see section 10 below).
+
+Public / session-optional:
+- `/company/*`, `/job/*`, `/feed/*`, `/filter/*` — job/company discovery.
+- `/chat/*` — AI chat.
+- `/feedback/*` — feedback submissions.
+- `/auth/*` — magic-link send/verify.
+- `/user/unsubscribe` — signed-token unsubscribe link.
+- `/talent-profiles/*` — public talent profile search + owner-editable profile.
+- `/analytics/*`, `/billing/*` — analytics events, billing/checkout/webhooks.
+- `/seo/*` — SEO/filter landing pages.
+- `/sitemap.xml`, `/sitemaps/*.xml` — XML sitemaps.
+- MCP server mounted separately at `/api/mcp` (see `mcp/` at the repo root,
+  and `mcp/README.md`).
 
 Global endpoints outside `/api`:
 - `GET /health`
@@ -73,7 +87,7 @@ Defined in `src/config.js`:
 ## 7) Operational Notes
 - PostgreSQL pool enforces SSL and IPv4 (`family: 4`).
 - Logger prints IST timestamps.
-- No test suite currently exists.
+- `npx vitest run` — a real test suite exists under `tests/`, mocking DAOs/services (see `tests/setup.js`). No `.env`/DB needed to run it.
 - Cron routes are plain HTTP endpoints (no scheduler/auth layer in repo).
 
 ## 8) Known Quirks To Preserve or Fix Deliberately
