@@ -8,6 +8,7 @@ import { registerJobTools } from './tools/jobs.js';
 import { registerCompanyTools } from './tools/companies.js';
 import { registerSavedJobTools } from './tools/savedJobs.js';
 import { registerAlertTools } from './tools/alerts.js';
+import { registerApplicationTools } from './tools/applications.js';
 import { registerTalentProfileTools } from './tools/talentProfile.js';
 import { registerInfoTools } from './tools/info.js';
 import { registerResources } from './resources.js';
@@ -48,6 +49,7 @@ function buildServer(user) {
   registerCompanyTools(server, ctx);
   registerSavedJobTools(server, ctx);
   registerAlertTools(server, ctx);
+  registerApplicationTools(server, ctx);
   registerTalentProfileTools(server, ctx);
   registerInfoTools(server, ctx);
 

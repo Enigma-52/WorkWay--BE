@@ -30,6 +30,22 @@ class ApplicationsDao extends PostgresDao {
     });
   }
 
+  // Same as updateApplication, but keyed on job_slug rather than the row's
+  // internal id — used by the MCP tool, which only ever knows a job by slug
+  // (never the internal db id, same convention as save_job/unsave_job).
+  async updateApplicationByUserAndSlug({ userId, jobSlug, status, notes }) {
+    return this.getQ({
+      sql: `
+        UPDATE job_applications
+        SET status = COALESCE($3, status), notes = COALESCE($4, notes)
+        WHERE user_id = $1 AND job_slug = $2
+        RETURNING *
+      `,
+      values: [userId, jobSlug, status ?? null, notes ?? null],
+      firstResultOnly: true,
+    });
+  }
+
   async countByUser(userId) {
     return this.getQ({
       sql: `SELECT COUNT(*)::int AS count FROM job_applications WHERE user_id = $1`,
