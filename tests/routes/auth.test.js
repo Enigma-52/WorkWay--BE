@@ -192,3 +192,18 @@ describe('GET /api/auth/magic-link/verify', () => {
     expect(res.body.user.id).toBe('u1');
   });
 });
+
+describe('GET /api/auth/magic-link/verify — rate limiting', () => {
+  it('allows 20 attempts in the window and rejects the 21st with 429', async () => {
+    const { app, verifyMagicLink } = await buildApp();
+    verifyMagicLink.mockResolvedValue({ success: false, reason: 'Invalid token' });
+
+    for (let i = 0; i < 20; i++) {
+      const res = await request(app).get('/api/auth/magic-link/verify?token=guess');
+      expect(res.status).toBe(400);
+    }
+
+    const res21 = await request(app).get('/api/auth/magic-link/verify?token=guess');
+    expect(res21.status).toBe(429);
+  });
+});
