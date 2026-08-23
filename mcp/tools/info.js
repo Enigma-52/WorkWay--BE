@@ -71,8 +71,8 @@ export async function getWorkwayInfoHandler(args = {}) {
 
   if (topic === 'api') {
     return ok({
-      base_url: 'https://api.workway.dev',
-      mcp_endpoint: 'https://api.workway.dev/mcp',
+      base_url: 'https://www.workway.dev',
+      mcp_endpoint: 'https://www.workway.dev/api/mcp',
       docs: DOCS_ORIGIN,
       note: 'These MCP tools call the same services as the public REST API below, so results never diverge from the website.',
       public_read_endpoints: {

@@ -125,7 +125,7 @@ function apiBody() {
 The MCP server is a wrapper over WorkWay's own HTTP API. Every tool calls the
 same services the website uses, so results never diverge between the two.
 
-Base URL: \`https://api.workway.dev\`
+Base URL: \`https://www.workway.dev\`
 
 ## Public read endpoints
 
@@ -149,7 +149,7 @@ Used by the site with a session, and by MCP tools with an API key:
 
 ## MCP endpoint
 
-\`POST https://api.workway.dev/mcp\` — Streamable HTTP transport, stateless.
+\`POST https://www.workway.dev/api/mcp\` — Streamable HTTP transport, stateless.
 Requires \`Authorization: Bearer <workway-api-key>\`.
 
 ## Sitemaps

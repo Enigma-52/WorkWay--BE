@@ -48,7 +48,7 @@ describe('get_workway_info', () => {
 
   it('documents the REST API and the MCP endpoint', async () => {
     const p = await payloadOf({ topic: 'api' });
-    expect(p.mcp_endpoint).toBe('https://api.workway.dev/mcp');
+    expect(p.mcp_endpoint).toBe('https://www.workway.dev/api/mcp');
     expect(p.public_read_endpoints['GET /api/job/list']).toMatch(/platform/);
   });
 
