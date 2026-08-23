@@ -28,6 +28,36 @@ function isUnfilteredQuery(filters) {
   );
 }
 
+// Same rationale as unfilteredFacetsCache, for the other high-traffic case:
+// the location-only SEO pages (`/jobs-in-<location>`, `/jobs?location=`).
+// `location ILIKE '%x%'` matches a large enough share of the 490k-row jobs
+// table that Postgres correctly picks a (parallel) seq scan over the trigram
+// index — cheap once, but getJobFacets fires 4 of these concurrently per
+// request (count + 3 facet GROUP BYs), and repeat hits on the same location
+// from crawlers/users were enough to pin a single-vCPU box's one core and
+// starve the 5-connection pg pool for every other route. Bounded to a small
+// map (cleared wholesale past the cap) since `location` is free text and an
+// unbounded cache keyed on it is itself a memory-growth vector.
+const LOCATION_FACETS_CACHE_TTL_MS = 10 * 60 * 1000;
+const LOCATION_FACETS_CACHE_MAX_ENTRIES = 200;
+const locationFacetsCache = new Map(); // normalized location -> { total, facets, expiresAt }
+
+function isLocationOnlyQuery(filters) {
+  return (
+    typeof filters.location === 'string' &&
+    filters.location.trim() !== '' &&
+    !filters.q &&
+    !filters.domain &&
+    !filters.employment_type &&
+    !filters.experience_level &&
+    !filters.country &&
+    !filters.company_slug &&
+    !filters.skill_slug &&
+    !filters.posted_since &&
+    !filters.platform
+  );
+}
+
 export async function getJobDetails(slug) {
   try {
     const jobDetails = await jobsDao.getSingleJob({ slug });
@@ -386,11 +416,19 @@ export async function getJobList(params) {
     unfilteredFacetsCache &&
     unfilteredFacetsCache.expiresAt > Date.now();
 
+  const locationCacheKey = isLocationOnlyQuery(filters) ? filters.location.trim().toLowerCase() : null;
+  const cachedLocation = locationCacheKey ? locationFacetsCache.get(locationCacheKey) : null;
+  const useLocationCache = cachedLocation && cachedLocation.expiresAt > Date.now();
+
   let rawJobs, total, facets;
   if (useCache) {
     [rawJobs] = await Promise.all([jobsDao.searchJobs({ filters, page, limit, sort })]);
     total = unfilteredFacetsCache.total;
     facets = unfilteredFacetsCache.facets;
+  } else if (useLocationCache) {
+    [rawJobs] = await Promise.all([jobsDao.searchJobs({ filters, page, limit, sort })]);
+    total = cachedLocation.total;
+    facets = cachedLocation.facets;
   } else {
     [rawJobs, total, facets] = await Promise.all([
       jobsDao.searchJobs({ filters, page, limit, sort }),
@@ -399,6 +437,9 @@ export async function getJobList(params) {
     ]);
     if (isUnfilteredQuery(filters)) {
       unfilteredFacetsCache = { total, facets, expiresAt: Date.now() + UNFILTERED_FACETS_CACHE_TTL_MS };
+    } else if (locationCacheKey) {
+      if (locationFacetsCache.size >= LOCATION_FACETS_CACHE_MAX_ENTRIES) locationFacetsCache.clear();
+      locationFacetsCache.set(locationCacheKey, { total, facets, expiresAt: Date.now() + LOCATION_FACETS_CACHE_TTL_MS });
     }
   }
 
