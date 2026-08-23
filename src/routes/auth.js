@@ -15,6 +15,17 @@ const magicLinkSendLimiter = rateLimit({
   message: { success: false, message: 'Too many sign-in attempts. Please try again in a few minutes.' },
 });
 
+// Tokens are 32-byte random values, so brute-forcing one is infeasible even
+// unbounded — this just caps scripted guess volume, same rationale as the
+// send limiter above.
+const magicLinkVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many attempts. Please try again in a few minutes.' },
+});
+
 // ── Magic Links ───────────────────────────────────────────────────────────────
 
 // Only ever a same-origin relative path — never let a client-supplied value
@@ -67,7 +78,7 @@ router.post('/magic-link/send', magicLinkSendLimiter, async (req, res) => {
   }
 });
 
-router.get('/magic-link/verify', async (req, res) => {
+router.get('/magic-link/verify', magicLinkVerifyLimiter, async (req, res) => {
   const { token } = req.query;
 
   if (!token || typeof token !== 'string') {
