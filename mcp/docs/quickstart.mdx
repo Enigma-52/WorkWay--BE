@@ -30,7 +30,7 @@ icon: "rocket"
     {
       "mcpServers": {
         "workway": {
-          "url": "https://api.workway.dev/mcp",
+          "url": "https://www.workway.dev/api/mcp",
           "headers": {
             "Authorization": "Bearer wk_live_your_key_here"
           }
@@ -40,7 +40,7 @@ icon: "rocket"
     ```
 
     ```bash Claude Code
-    claude mcp add --transport http workway https://api.workway.dev/mcp \
+    claude mcp add --transport http workway https://www.workway.dev/api/mcp \
       --header "Authorization: Bearer wk_live_your_key_here"
     ```
     </CodeGroup>
@@ -73,7 +73,7 @@ icon: "rocket"
 If tools do not appear, check the key directly:
 
 ```bash
-curl -X POST https://api.workway.dev/mcp \
+curl -X POST https://www.workway.dev/api/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "Authorization: Bearer wk_live_your_key_here" \
