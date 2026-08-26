@@ -56,4 +56,62 @@ describe('getJobDomain', () => {
   it('does not misclassify "Solutions Engineer" serving an industry vertical as that industry\'s engineering discipline', async () => {
     expect(await getJobDomain('Senior Solutions Engineer, Aerospace & Defense')).toBe('Software Engineering');
   });
+
+  it('routes "developer" titles to Software Engineering (was not a keyword anywhere before)', async () => {
+    expect(await getJobDomain('Software Developer')).toBe('Software Engineering');
+    expect(await getJobDomain('Salesforce Developer')).toBe('Software Engineering');
+  });
+
+  it('routes corporate IT titles to Operations, but IT-audit titles to Legal', async () => {
+    expect(await getJobDomain('IT Manager')).toBe('Operations');
+    expect(await getJobDomain('IT Systems Administrator')).toBe('Operations');
+    expect(await getJobDomain('Senior IT Auditor')).toBe('Legal');
+    expect(await getJobDomain('Director, IT Audit and Technology Risk Advisory')).toBe('Legal');
+  });
+
+  it('routes Implementation Manager/Consultant to Support / Customer Success', async () => {
+    expect(await getJobDomain('Implementation Manager')).toBe('Support / Customer Success');
+    expect(await getJobDomain('Director, Customer Implementation')).toBe('Support / Customer Success');
+  });
+
+  it('routes procurement/logistics/facilities cluster to Operations', async () => {
+    expect(await getJobDomain('Procurement Manager')).toBe('Operations');
+    expect(await getJobDomain('Logistics Coordinator')).toBe('Operations');
+    expect(await getJobDomain('Facilities Manager')).toBe('Operations');
+  });
+
+  it('routes remaining healthcare-adjacent titles to Healthcare', async () => {
+    expect(await getJobDomain('Caregiver')).toBe('Healthcare');
+    expect(await getJobDomain('Endodontist Opening')).toBe('Healthcare');
+    expect(await getJobDomain('Psychiatric Clinician')).toBe('Healthcare');
+  });
+
+  // Regression coverage for block-ordering bugs found while backfilling
+  // production: adding broader keywords to Operations/Skilled Trades
+  // without checking precedence caused more specific Legal and Healthcare
+  // titles to be caught by generic Operations/Skilled Trades terms first.
+  it('routes Legal-flavored "operations"/"contracts" titles to Legal, not Operations', async () => {
+    expect(await getJobDomain('Legal Operations Manager')).toBe('Legal');
+    expect(await getJobDomain('Legal Operations Specialist')).toBe('Legal');
+    expect(await getJobDomain('Commercial Paralegal - Contracts Manager')).toBe('Legal');
+    expect(await getJobDomain('Operations Paralegal')).toBe('Legal');
+  });
+
+  it('routes IT-audit titles to Legal, not Operations', async () => {
+    expect(await getJobDomain('Senior IT Auditor')).toBe('Legal');
+    expect(await getJobDomain('Director, IT Audit and Technology Risk Advisory')).toBe('Legal');
+  });
+
+  it('routes "Facilities"/"Logistics" technician-level roles to Skilled Trades, not Operations', async () => {
+    expect(await getJobDomain('Facilities Technician')).toBe('Skilled Trades');
+    expect(await getJobDomain('Logistics Technician')).toBe('Skilled Trades');
+  });
+
+  it('routes Behavior Technician titles (including "Behavior Health Technician" and plural "Technicians") to Healthcare, not Skilled Trades', async () => {
+    expect(await getJobDomain('Behavior Technician')).toBe('Healthcare');
+    expect(await getJobDomain('Behavior Health Technician I')).toBe('Healthcare');
+    expect(await getJobDomain('Registered Behavior Technicians Aspiring to Complete their BCBA')).toBe('Healthcare');
+    // must not over-broaden to unrelated "behavior" titles without "technician"
+    expect(await getJobDomain('Consumer Behavior Analyst')).toBe('Analyst');
+  });
 });

@@ -98,7 +98,9 @@ export async function getJobDomain(title) {
     t.includes(' social media ') ||
     t.includes(' community manager ') ||
     t.includes(' content marketing ') ||
-    t.includes(' field marketer ')
+    t.includes(' field marketer ') ||
+    t.includes(' paid media ') ||
+    t.includes(' demand generation ')
   )
     return 'Customer Acquisition';
   if (
@@ -108,7 +110,9 @@ export async function getJobDomain(title) {
     t.includes(' hr ') ||
     t.includes(' human resources ') ||
     t.includes(' people ops ') ||
-    t.includes(' people operations ')
+    t.includes(' people operations ') ||
+    t.includes(' people partner ') ||
+    t.includes(' people business partner ')
   )
     return 'Talent / HR';
   if (
@@ -125,7 +129,8 @@ export async function getJobDomain(title) {
     t.includes(' cfo ') ||
     t.includes(' tax ') ||
     t.includes(' fp a ') || // "FP&A" after & -> space normalization
-    t.includes(' wealth advisor ')
+    t.includes(' wealth advisor ') ||
+    t.includes(' payroll ')
   )
     return 'Accounts / Finance';
   if (
@@ -144,24 +149,29 @@ export async function getJobDomain(title) {
     t.includes(' technical support ') ||
     t.includes(' client services ') ||
     t.includes(' customer service ') ||
-    t.includes(' client success ')
+    t.includes(' client success ') ||
+    // "Implementation Manager/Consultant/Specialist" is customer onboarding/
+    // professional-services work — one real example was literally titled
+    // "Director, Customer Implementation".
+    t.includes(' implementation ')
   )
     return 'Support / Customer Success';
   if (
-    t.includes(' operations ') ||
-    t.includes(' ops ') ||
-    t.includes(' chief operating officer ') ||
-    t.includes(' coo ')
-  )
-    return 'Operations';
-  if (
+    // Legal now runs BEFORE Operations — "Legal Operations Manager" and
+    // "Commercial Paralegal - Contracts Manager" were incorrectly landing
+    // in Operations (via " operations "/" contracts ") before ever
+    // reaching these more specific signals. A title containing "legal"/
+    // "paralegal"/"counsel"/etc. is legal work even when it also mentions
+    // operations/contracts.
     t.includes(' legal ') ||
     t.includes(' counsel ') ||
     t.includes(' attorney ') ||
     t.includes(' lawyer ') ||
     t.includes(' paralegal ') ||
     t.includes(' litigation ') ||
-    t.includes(' compliance ')
+    t.includes(' compliance ') ||
+    t.includes(' audit ') ||
+    t.includes(' auditor ')
   )
     return 'Legal';
   if (
@@ -177,7 +187,16 @@ export async function getJobDomain(title) {
     t.includes(' physical therapist ') ||
     t.includes(' occupational therapist ') ||
     t.includes(' therapist ') ||
+    // Must run before Skilled Trades' bare " technician " below, which
+    // would otherwise catch "Behavior Technician"/"Registered Behavior
+    // Technician (RBT)" first (found when this block was briefly ordered
+    // after Skilled Trades: 4,061 healthcare jobs incorrectly flipped to
+    // Skilled Trades in one backfill pass before this was caught).
     t.includes(' behavior technician ') ||
+    // AND-based, not another exact phrase — "Behavior Health Technician"
+    // and "Behavior Technicians Aspiring to Complete their BCBA" (plural)
+    // both slipped past the exact " behavior technician " phrase above.
+    (t.includes(' behavior ') && t.includes('technician')) ||
     t.includes(' behavioral ') ||
     t.includes(' interventionist ') ||
     t.includes(' cna ') ||
@@ -199,6 +218,12 @@ export async function getJobDomain(title) {
     t.includes(' athletic trainer ') ||
     t.includes(' pathologist ') ||
     t.includes(' imaging ') ||
+    t.includes(' caregiver ') ||
+    t.includes(' emt ') ||
+    t.includes(' endodontist ') ||
+    t.includes(' oral surgeon ') ||
+    t.includes(' psychiatric ') ||
+    t.includes(' occupational therapy ') ||
     // French home-care postings (Ouihelp and similar) — "auxiliaire de
     // vie" (home health aide), "aide à/aux domicile/personnes" (in-home
     // helper/elderly care aide), "assistant de vie" (care assistant).
@@ -212,6 +237,11 @@ export async function getJobDomain(title) {
   )
     return 'Healthcare';
   if (
+    // Moved ahead of Operations — "Facilities Technician"/"Logistics
+    // Technician" were landing in Operations (via " facilities "/
+    // " logistics ") before reaching these more specific hands-on-trade
+    // signals, which are a better fit for technician/mechanic-level roles
+    // regardless of which department they sit in.
     t.includes(' technician ') ||
     t.includes(' technicians ') ||
     t.includes(' mechanic ') ||
@@ -224,6 +254,34 @@ export async function getJobDomain(title) {
     t.includes(' delivery driver ')
   )
     return 'Skilled Trades';
+  if (
+    t.includes(' operations ') ||
+    t.includes(' ops ') ||
+    t.includes(' chief operating officer ') ||
+    t.includes(' coo ') ||
+    t.includes(' procurement ') ||
+    t.includes(' purchasing ') ||
+    t.includes(' logistics ') ||
+    t.includes(' dispatcher ') ||
+    t.includes(' facilities ') ||
+    t.includes(' contracts ') ||
+    // Corporate/general IT — specific compound phrases, not a bare " it "
+    // (too generic/risky as a standalone keyword). "IT Audit"-flavored
+    // titles are excluded here — they're caught by Legal's " audit " check
+    // above, since Legal now runs first.
+    t.includes(' it manager ') ||
+    t.includes(' it specialist ') ||
+    t.includes(' it administrator ') ||
+    t.includes(' it systems administrator ') ||
+    t.includes(' it helpdesk ') ||
+    t.includes(' it generalist ') ||
+    t.includes(' it associate ') ||
+    t.includes(' it lead ') ||
+    t.includes(' head of it ') ||
+    t.includes(' director of it ') ||
+    t.includes(' director it ') // safe now that Legal (incl. " audit ") runs first
+  )
+    return 'Operations';
   if (
     t.includes(' teacher ') ||
     t.includes(' teaching ') ||
@@ -299,7 +357,13 @@ export async function getJobDomain(title) {
     t.includes(' solutions architect ') ||
     t.includes(' solution architect ') ||
     t.includes(' solutions consultant ') ||
-    t.includes(' scrum master ')
+    t.includes(' scrum master ') ||
+    // "Software Developer"/"Salesforce Developer"/etc — a huge, obvious
+    // miss: "developer" wasn't a keyword anywhere in this function at all.
+    // Safe this late in the chain since anything that should have matched
+    // a more specific earlier bucket (e.g. "Business Development Manager"
+    // via Customer Acquisition's " business development ") already did.
+    t.includes(' developer ')
   )
     return 'Software Engineering';
   if (t.includes(' researcher ') || t.includes(' research ')) return 'Research';
